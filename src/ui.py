@@ -826,6 +826,19 @@ class PSTimerUI(tk.Tk):
         else:
             self._enter_compact_mode()
 
+    def _center_window(self, width, height):
+        """Center the window on screen with given dimensions."""
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Calculate center position
+        center_x = int(screen_width / 2 - width / 2)
+        center_y = int(screen_height / 2 - height / 2)
+
+        # Set window geometry
+        self.geometry(f"{width}x{height}+{center_x}+{center_y}")
+
     def _enter_compact_mode(self):
         """Enter compact mode showing only timer and scramble."""
         if self.is_compact_mode:
@@ -871,6 +884,9 @@ class PSTimerUI(tk.Tk):
         # Restore window geometry
         if self.normal_geometry:
             self.geometry(self.normal_geometry)
+        else:
+            # If no stored geometry, center the window with default size
+            self._center_window(1200, 800)
 
         # Refresh displays
         self._update_session_display()
