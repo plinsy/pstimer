@@ -187,10 +187,18 @@ class TimerApp(tk.Tk):
         self.pulse_scale = 1.0
         self.bg_phase = 0.0
 
-        # Bind keys
-        self.bind("<space>", self.toggle_timer)
+        # Ready state for hold-space mechanism
+        self.ready_state = False
+        self.ready_start_time = None
+
+        # Bind keys - use KeyPress and KeyRelease for space
+        self.bind("<KeyPress-space>", self.space_pressed)
+        self.bind("<KeyRelease-space>", self.space_released)
         self.bind("s", lambda e: self.new_scramble())
         self.bind("r", lambda e: self.reset_current())
+
+        # Make sure the window can receive focus
+        self.focus_set()
 
         # Start UI loop
         self._update_ui_loop()
@@ -263,7 +271,7 @@ class TimerApp(tk.Tk):
 
         hint = tk.Label(
             left,
-            text="Space: Start/Stop  •  S: New scramble  •  R: Reset",
+            text="Hold Space: Ready • Release Space: Start/Stop • S: New scramble • R: Reset",
             bg=theme["bg"],
             fg=theme["hint_fg"],
             font=("Arial", 10),
@@ -322,7 +330,34 @@ class TimerApp(tk.Tk):
         # small bounce animation to indicate reset
         self._bounce_time_label()
 
+    def space_pressed(self, event=None):
+        """Handle space key press - enter ready state if timer is not running."""
+        if not self.stopwatch.running and not self.ready_state:
+            self.ready_state = True
+            self.ready_start_time = time.time()
+            # Visual feedback for ready state
+            self._show_ready_state()
+
+    def space_released(self, event=None):
+        """Handle space key release - start timer if ready, stop if running."""
+        if self.stopwatch.running:
+            # If timer is running, stop it
+            self.stop_timer()
+        elif self.ready_state:
+            # Check if space was held long enough (minimum 500ms for safety)
+            hold_time = time.time() - (self.ready_start_time or 0)
+            if hold_time >= 0.5:
+                # Start the timer
+                self.ready_state = False
+                self._hide_ready_state()
+                self.start_timer()
+            else:
+                # Released too quickly, cancel ready state
+                self.ready_state = False
+                self._hide_ready_state()
+
     def toggle_timer(self, event=None):
+        """Legacy method - now handled by space press/release."""
         if self.stopwatch.running:
             self.stop_timer()
         else:
@@ -350,6 +385,22 @@ class TimerApp(tk.Tk):
     def clear_times(self):
         self.times = []
         self.times_listbox.delete(0, tk.END)
+
+    def _show_ready_state(self):
+        """Show visual feedback that the timer is ready to start."""
+        theme = self.theme_manager.get_theme()
+        # Change time label to green to indicate ready
+        self.time_label.configure(fg="#00ff00")  # Bright green
+        # Slightly scale up the time label
+        self.time_label.configure(font=("Consolas", int(48 * 1.05), "bold"))
+
+    def _hide_ready_state(self):
+        """Hide ready state visual feedback."""
+        theme = self.theme_manager.get_theme()
+        # Restore normal text color
+        self.time_label.configure(fg=theme["text_fg"])
+        # Restore normal size
+        self.time_label.configure(font=("Consolas", int(48 * self.pulse_scale), "bold"))
 
     def _on_theme_change(self, event=None):
         """Handle theme selection change."""
@@ -565,8 +616,11 @@ class TimerApp(tk.Tk):
                 except Exception:
                     pass
 
-        # Keep time label size consistent with pulse_scale
-        self.time_label.config(font=("Consolas", int(48 * self.pulse_scale), "bold"))
+        # Keep time label size consistent with pulse_scale (unless in ready state)
+        if not self.ready_state:
+            self.time_label.config(
+                font=("Consolas", int(48 * self.pulse_scale), "bold")
+            )
 
         # schedule next update
         self.after(30, self._update_ui_loop)
