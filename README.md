@@ -1,0 +1,225 @@
+# PSTimer - Professional Speedcubing Timer
+
+A modern, feature-rich Rubik's cube timer application inspired by csTimer, built with Python and Tkinter.
+
+![PSTimer Screenshot](docs/screenshot.png)
+
+## Features
+
+### ✨ Core Features
+- **csTimer-inspired UI** - Clean, professional interface matching the popular csTimer layout
+- **High-precision timing** - Accurate to centiseconds using Python's `time.perf_counter()`
+- **Multiple puzzle support** - 3x3x3, 2x2x2, 4x4x4 scrambles with extensible architecture
+- **Advanced statistics** - mo3, ao5, ao12, ao100 with automatic calculation
+- **Session management** - Track multiple solve sessions with detailed statistics
+- **3D cube visualization** - Interactive 3D cube that shows scramble state
+- **Multiple themes** - csTimer, Dark, and Blue themes
+
+### 🎯 Timer Features
+- **Space bar controls** - Hold space to ready, release to start, any key to stop
+- **Visual feedback** - Timer color changes based on state (ready/running/stopped)
+- **Automatic scramble generation** - New scramble after each solve
+- **Time history** - Complete solve history with timestamps
+
+### 📊 Statistics
+- **Real-time calculation** - Statistics update automatically after each solve
+- **Multiple averages** - ao5, ao12, ao100 with proper trimming
+- **Best times tracking** - Track personal bests for each statistic
+- **Session overview** - Solve count, session mean, current vs best times
+
+### 🎨 User Interface
+- **Top navigation bar** - Settings, menu, scramble type selection
+- **Left statistics panel** - Current and best times, solve count, times list
+- **Center timer display** - Large, clear timer with scramble above
+- **Right cube panel** - 3D interactive cube visualization
+- **Responsive design** - Adapts to different window sizes
+
+## Installation
+
+### Prerequisites
+- Python 3.7 or higher
+- tkinter (usually included with Python)
+
+### Quick Start
+1. Clone or download this repository
+2. Navigate to the project directory
+3. Run the application:
+   ```bash
+   python main.py
+   ```
+
+## Usage
+
+### Basic Controls
+- **Space bar**: Hold to ready the timer, release to start
+- **Any key**: Stop the timer (while running)
+- **S key**: Generate new scramble
+- **R key**: Reset timer to zero
+
+### Timer Workflow
+1. **Ready**: Hold space bar until timer turns green
+2. **Start**: Release space bar to start timing
+3. **Stop**: Press any key to stop the timer
+4. **Record**: Time is automatically recorded and statistics updated
+5. **Next**: New scramble is generated automatically
+
+### Navigation
+- **Previous/Next scramble**: Use ◀ ▶ buttons in top bar
+- **Scramble type**: Select from dropdown (3x3x3, 2x2x2, 4x4x4)
+- **Settings**: Click ⚙ button (placeholder)
+- **Menu**: Click ☰ button (placeholder)
+
+## Project Structure
+
+```
+pstimer/
+├── main.py                 # Main entry point
+├── src/                    # Source code modules
+│   ├── __init__.py
+│   ├── timer.py           # Core timer functionality
+│   ├── scramble.py        # Scramble generation
+│   ├── statistics.py      # Statistics calculation and session management
+│   ├── themes.py          # Theme management
+│   ├── cube_visualization.py  # 3D cube visualization
+│   └── ui.py              # Main UI implementation
+└── README.md              # This file
+```
+
+## Architecture
+
+### Modular Design
+The application is built with a modular architecture for maintainability:
+
+- **Timer Module** (`timer.py`): High-precision stopwatch implementation
+- **Scramble Module** (`scramble.py`): Extensible scramble generation system
+- **Statistics Module** (`statistics.py`): Session management and statistics calculation
+- **Themes Module** (`themes.py`): Centralized theme and styling management
+- **Cube Visualization** (`cube_visualization.py`): 3D cube rendering and interaction
+- **UI Module** (`ui.py`): Main application interface and event handling
+
+### Key Classes
+
+#### `Stopwatch`
+- High-precision timing using `time.perf_counter()`
+- Start/stop/reset functionality
+- Time formatting for speedcubing (MM:SS.cc format)
+
+#### `ScrambleManager`
+- Supports multiple puzzle types
+- Scramble history navigation
+- Extensible generator system
+
+#### `SessionManager` & `Session`
+- Multiple session support
+- Solve recording with metadata
+- Automatic statistics calculation
+
+#### `StatisticsCalculator`
+- Standard speedcubing statistics (mo3, ao5, ao12, ao100)
+- Proper trimming algorithms
+- Best time tracking
+
+#### `ThemeManager`
+- Multiple color themes
+- Consistent styling across application
+- Easy theme switching
+
+#### `CubeVisualization`
+- 3D cube rendering
+- Mouse interaction for rotation
+- Scramble state visualization
+
+## Themes
+
+### Available Themes
+1. **csTimer** (default) - Clean white theme matching csTimer
+2. **Dark** - Dark theme for low-light environments  
+3. **Blue** - Blue accent theme
+
+### Theme Structure
+Each theme includes:
+- Background colors (main, secondary, sidebar, panel)
+- Text colors (primary, secondary, hint)
+- Accent colors for interactive elements
+- Timer state colors (normal, ready, running)
+- Font specifications
+
+## Statistics Explanation
+
+### Averages
+- **mo3**: Mean of 3 - Simple average of last 3 solves
+- **ao5**: Average of 5 - Remove best and worst, average middle 3
+- **ao12**: Average of 12 - Remove best and worst, average middle 10
+- **ao100**: Average of 100 - Remove best 5 and worst 5, average middle 90
+
+### Current vs Best
+- **Current**: Statistics based on most recent solves
+- **Best**: Best achieved statistics in the current session
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space (hold) | Ready timer |
+| Space (release) | Start timer |
+| Any key | Stop timer |
+| S | New scramble |
+| R | Reset timer |
+
+## Development
+
+### Extending Scramble Types
+To add a new puzzle type:
+
+1. Create a new scramble generator class inheriting from `ScrambleGenerator`
+2. Implement the `generate()` method
+3. Add to `ScrambleManager.SCRAMBLE_TYPES`
+
+Example:
+```python
+class FiveByFiveScramble(ScrambleGenerator):
+    def generate(self):
+        # Implementation here
+        return scramble_string
+```
+
+### Adding Themes
+To add a new theme:
+
+1. Add theme definition to `ThemeManager.THEMES`
+2. Include all required color keys
+3. Theme will be automatically available in UI
+
+### Contributing
+1. Follow the existing code style
+2. Add docstrings to new functions/classes
+3. Test thoroughly before submitting
+4. Update README if adding new features
+
+## Known Limitations
+
+- Cube visualization is simplified (not a full cube simulator)
+- Settings dialog not yet implemented
+- No save/load session functionality
+- Limited to basic puzzle types
+
+## Future Enhancements
+
+- [ ] Complete settings panel implementation
+- [ ] Session save/load functionality
+- [ ] More puzzle types (5x5, 6x6, 7x7, Pyraminx, etc.)
+- [ ] Graph/chart visualization of solve times
+- [ ] Import/export functionality
+- [ ] Full cube state simulation
+- [ ] Inspection time feature
+- [ ] Solve penalties (+2, DNF)
+
+## License
+
+This project is open source. Feel free to use, modify, and distribute.
+
+## Acknowledgments
+
+- Inspired by csTimer (https://cstimer.net/)
+- Built with Python and Tkinter
+- Thanks to the speedcubing community for feedback and suggestions
