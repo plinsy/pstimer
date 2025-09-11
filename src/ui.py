@@ -34,6 +34,7 @@ class PSTimerUI(tk.Tk):
         self.inspection_time = None
         self.inspection_enabled = False
         self.hold_time = 300  # Default hold time in milliseconds
+        self.transparency = 1.0  # Default transparency (fully opaque)
         self.user_settings = {}  # Store user settings
 
         # Animation variables
@@ -456,6 +457,18 @@ class PSTimerUI(tk.Tk):
         self.bind("<KeyRelease-space>", self._on_space_release)
         self.bind("<KeyPress-s>", lambda e: self._generate_new_scramble())
         self.bind("<KeyPress-r>", lambda e: self._reset_timer())
+
+        # Transparency controls
+        self.bind(
+            "<Control-equal>", lambda e: self._adjust_transparency(0.05)
+        )  # Ctrl + = (increase transparency)
+        self.bind(
+            "<Control-minus>", lambda e: self._adjust_transparency(-0.05)
+        )  # Ctrl + - (decrease transparency)
+        self.bind(
+            "<Control-0>", lambda e: self._reset_transparency()
+        )  # Ctrl + 0 (reset to opaque)
+
         self.bind("<KeyPress>", self._on_any_key)
 
         self.focus_set()  # Ensure window can receive key events
@@ -676,21 +689,26 @@ class PSTimerUI(tk.Tk):
         self.stopwatch.reset()
         self.is_ready = False
 
-    def _show_settings(self):
-        """Show settings dialog."""
-        result = show_settings_dialog(self, self.theme_manager, self.session_manager)
-        if result:
-            # Apply theme change if needed
-            if result["theme"] != self.theme_manager.current_theme_name:
-                self.theme_manager.set_theme(result["theme"])
-                self._apply_theme()
+    def _adjust_transparency(self, delta):
+        """Adjust window transparency by delta amount."""
+        new_transparency = max(0.3, min(1.0, self.transparency + delta))
+        if new_transparency != self.transparency:
+            self.transparency = new_transparency
+            self.attributes("-alpha", self.transparency)
 
-            # Store other settings for later use
-            self.settings = result
+    def _reset_transparency(self):
+        """Reset transparency to fully opaque."""
+        self.transparency = 1.0
+        self.attributes("-alpha", self.transparency)
 
     def _show_settings(self):
         """Show settings dialog and apply changes."""
-        result = show_settings_dialog(self, self.theme_manager, self.session_manager)
+        result = show_settings_dialog(
+            self,
+            self.theme_manager,
+            self.session_manager,
+            current_transparency=self.transparency,
+        )
         if result:
             # Apply settings
             self._apply_settings(result)
@@ -715,6 +733,12 @@ class PSTimerUI(tk.Tk):
         if "hold_time" in settings:
             self.hold_time = settings["hold_time"]
 
+        # Apply transparency setting
+        if "transparency" in settings:
+            transparency = settings["transparency"]
+            self.transparency = transparency
+            self.attributes("-alpha", transparency)
+
         # Store settings for future use
         self.user_settings = settings
 
@@ -724,6 +748,7 @@ class PSTimerUI(tk.Tk):
             f"Settings have been applied successfully!\n\n"
             f"Puzzle type: {settings.get('puzzle_type', 'unchanged')}\n"
             f"Inspection time: {'Enabled' if settings.get('inspection', False) else 'Disabled'}\n"
+            f"Transparency: {int(settings.get('transparency', 1.0) * 100)}%\n"
             f"Theme: {settings.get('theme', 'unchanged')}",
         )
 

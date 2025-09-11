@@ -103,6 +103,7 @@ class AboutDialog:
             "• 3D cube visualization",
             "• Session management",
             "• Multiple themes",
+            "• Window transparency for multitasking",
         ]
 
         for feature in features:
@@ -131,6 +132,9 @@ class AboutDialog:
             "• Any key: Stop timer",
             "• S: New scramble",
             "• R: Reset timer",
+            "• Ctrl + =: Increase transparency",
+            "• Ctrl + -: Decrease transparency",
+            "• Ctrl + 0: Reset transparency",
         ]
 
         for control in controls:

@@ -9,16 +9,19 @@ from tkinter import ttk
 class SettingsDialog:
     """Settings configuration dialog."""
 
-    def __init__(self, parent, theme_manager, session_manager):
+    def __init__(
+        self, parent, theme_manager, session_manager, current_transparency=1.0
+    ):
         self.parent = parent
         self.theme_manager = theme_manager
         self.session_manager = session_manager
+        self.current_transparency = current_transparency
         self.result = None
 
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("PSTimer Settings")
-        self.dialog.geometry("400x500")
+        self.dialog.geometry("400x550")  # Increased height for transparency controls
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -87,6 +90,61 @@ class SettingsDialog:
             width=30,
         )
         theme_combo.pack(anchor=tk.W, padx=10, pady=(0, 10))
+
+        # Window transparency
+        tk.Label(
+            theme_frame,
+            text="Window transparency:",
+            font=(theme["font_family"], 10),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+        ).pack(anchor=tk.W, padx=10, pady=(10, 5))
+
+        tk.Label(
+            theme_frame,
+            text="(Lower values make window more see-through for multitasking)",
+            font=(theme["font_family"], 8),
+            bg=theme["bg"],
+            fg=theme["text_secondary"],
+        ).pack(anchor=tk.W, padx=10, pady=(0, 5))
+
+        transparency_frame = tk.Frame(theme_frame, bg=theme["bg"])
+        transparency_frame.pack(anchor=tk.W, padx=10, pady=(0, 10))
+
+        self.transparency_var = tk.DoubleVar(value=self.current_transparency)
+        transparency_scale = tk.Scale(
+            transparency_frame,
+            from_=0.3,  # 30% minimum transparency
+            to=1.0,  # 100% opaque (no transparency)
+            resolution=0.05,
+            orient=tk.HORIZONTAL,
+            variable=self.transparency_var,
+            length=200,
+            font=(theme["font_family"], 9),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+            highlightbackground=theme["bg"],
+            troughcolor=theme["panel_bg"],
+            activebackground=theme["accent"],
+        )
+        transparency_scale.pack(side=tk.LEFT)
+
+        transparency_label = tk.Label(
+            transparency_frame,
+            text="100%",
+            font=(theme["font_family"], 9),
+            bg=theme["bg"],
+            fg=theme["text_secondary"],
+            width=4,
+        )
+        transparency_label.pack(side=tk.LEFT, padx=(10, 0))
+
+        def update_transparency_label(*args):
+            value = self.transparency_var.get()
+            percentage = int(value * 100)
+            transparency_label.config(text=f"{percentage}%")
+
+        self.transparency_var.trace("w", update_transparency_label)
 
         # Timer settings
         timer_frame = tk.LabelFrame(
@@ -283,6 +341,7 @@ class SettingsDialog:
         # Store other settings (would need to be implemented in main app)
         self.result = {
             "theme": self.theme_var.get(),
+            "transparency": self.transparency_var.get(),
             "puzzle_type": self.puzzle_type_var.get(),
             "inspection": self.inspection_var.get(),
             "hold_time": int(self.hold_time_var.get()),
@@ -303,6 +362,7 @@ class SettingsDialog:
     def _reset_defaults(self):
         """Reset all settings to defaults."""
         self.theme_var.set("csTimer")
+        self.transparency_var.set(1.0)
         self.puzzle_type_var.set("3x3x3")
         self.inspection_var.set(False)
         self.hold_time_var.set("300")
@@ -319,7 +379,11 @@ class SettingsDialog:
         return self.result
 
 
-def show_settings_dialog(parent, theme_manager, session_manager):
+def show_settings_dialog(
+    parent, theme_manager, session_manager, current_transparency=1.0
+):
     """Show the settings dialog."""
-    dialog = SettingsDialog(parent, theme_manager, session_manager)
+    dialog = SettingsDialog(
+        parent, theme_manager, session_manager, current_transparency
+    )
     return dialog.show()
