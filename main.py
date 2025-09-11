@@ -197,13 +197,21 @@ class Stopwatch:
         return self.elapsed
 
     def format_time(self, seconds):
-        # Format as M:SS.cc (centiseconds)
+        # Digital style format - show minutes only if >= 60 seconds
+        if seconds is None:
+            return "---"
+
         total_cs = int(round(seconds * 100))
         cs = total_cs % 100
         total_s = total_cs // 100
         s = total_s % 60
         m = total_s // 60
-        return f"{m}:{s:02d}.{cs:02d}"
+
+        # Digital style - don't show minutes unless >= 60 seconds
+        if total_s >= 60:
+            return f"{m}:{s:02d}.{cs:02d}"
+        else:
+            return f"{s:02d}.{cs:02d}"
 
 # ------------------- GUI App -------------------
 
@@ -284,11 +292,11 @@ class TimerApp(tk.Tk):
         left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=12, pady=12)
 
         # Time label
-        self.time_var = tk.StringVar(value="0:00.00")
+        self.time_var = tk.StringVar(value="00.00")
         self.time_label = tk.Label(
             left,
             textvariable=self.time_var,
-            font=("Consolas", 48, "bold"),
+            font=("Courier New", 48, "bold"),  # More digital-style font
             fg=theme["text_fg"],
             bg=theme["bg"],
         )
@@ -560,7 +568,7 @@ class TimerApp(tk.Tk):
         # Change time label to green to indicate ready
         self.time_label.configure(fg="#00ff00")  # Bright green
         # Slightly scale up the time label
-        self.time_label.configure(font=("Consolas", int(48 * 1.05), "bold"))
+        self.time_label.configure(font=("Courier New", int(48 * 1.05), "bold"))
 
     def _hide_ready_state(self):
         """Hide ready state visual feedback."""
@@ -568,7 +576,9 @@ class TimerApp(tk.Tk):
         # Restore normal text color
         self.time_label.configure(fg=theme["text_fg"])
         # Restore normal size
-        self.time_label.configure(font=("Consolas", int(48 * self.pulse_scale), "bold"))
+        self.time_label.configure(
+            font=("Courier New", int(48 * self.pulse_scale), "bold")
+        )
 
     def _on_theme_change(self, event=None):
         """Handle theme selection change."""
@@ -709,10 +719,12 @@ class TimerApp(tk.Tk):
             nonlocal current
             if i >= steps:
                 self.pulse_scale = target
-                self.time_label.config(font=("Consolas", int(48 * self.pulse_scale), "bold"))
+                self.time_label.config(
+                    font=("Courier New", int(48 * self.pulse_scale), "bold")
+                )
                 return
             current += delta
-            self.time_label.config(font=("Consolas", int(48 * current), "bold"))
+            self.time_label.config(font=("Courier New", int(48 * current), "bold"))
             self.after(25, lambda: step(i+1))
 
         step(0)
@@ -723,11 +735,11 @@ class TimerApp(tk.Tk):
         steps = 8
         def step(i):
             if i > steps:
-                self.time_label.config(font=("Consolas", orig, "bold"))
+                self.time_label.config(font=("Courier New", orig, "bold"))
                 return
             # ease out bounce using a sin-ish pattern
             size = orig + int(6 * (1 - abs((i / steps) * 2 - 1)))
-            self.time_label.config(font=("Consolas", size, "bold"))
+            self.time_label.config(font=("Courier New", size, "bold"))
             self.after(25, lambda: step(i+1))
         step(0)
 
@@ -787,7 +799,7 @@ class TimerApp(tk.Tk):
         # Keep time label size consistent with pulse_scale (unless in ready state)
         if not self.ready_state:
             self.time_label.config(
-                font=("Consolas", int(48 * self.pulse_scale), "bold")
+                font=("Courier New", int(48 * self.pulse_scale), "bold")
             )
 
         # schedule next update
