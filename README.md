@@ -9,7 +9,8 @@ A modern, feature-rich Rubik's cube timer application inspired by csTimer, built
 ### ✨ Core Features
 - **csTimer-inspired UI** - Clean, professional interface matching the popular csTimer layout
 - **High-precision timing** - Accurate to centiseconds using Python's `time.perf_counter()`
-- **Multiple puzzle support** - 3x3x3, 2x2x2, 4x4x4 scrambles with extensible architecture
+- **WCA-compliant scrambles** - Official World Cube Association scramble algorithms
+- **Multiple puzzle support** - 3x3x3, 2x2x2, 4x4x4, 5x5x5, Pyraminx, Skewb, Megaminx, Square-1
 - **Advanced statistics** - mo3, ao5, ao12, ao100 with automatic calculation
 - **Session management** - Track multiple solve sessions with detailed statistics
 - **3D cube visualization** - Interactive 3D cube that shows scramble state
@@ -65,9 +66,16 @@ A modern, feature-rich Rubik's cube timer application inspired by csTimer, built
 
 ### Navigation
 - **Previous/Next scramble**: Use ◀ ▶ buttons in top bar
-- **Scramble type**: Select from dropdown (3x3x3, 2x2x2, 4x4x4)
-- **Settings**: Click ⚙ button (placeholder)
-- **Menu**: Click ☰ button (placeholder)
+- **Scramble type**: Select from dropdown (3x3x3, 2x2x2, 4x4x4, 5x5x5, Pyraminx, Skewb, Megaminx, Square-1)
+- **Settings**: Click ⚙ button to configure puzzle type, themes, and preferences
+- **Menu**: Click ☰ button for session management and about dialog
+
+### WCA Compliance
+PSTimer uses **World Cube Association (WCA) compliant** scramble algorithms:
+- Follows official WCA scrambling specifications
+- Tournament-legal scrambles for all supported puzzles
+- Proper move restrictions and sequence validation
+- See `WCA_COMPLIANCE.md` for detailed specifications
 
 ## Project Structure
 

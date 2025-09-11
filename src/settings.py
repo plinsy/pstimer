@@ -139,13 +139,38 @@ class SettingsDialog:
         )
         scramble_frame.pack(fill=tk.X, pady=(0, 15))
 
+        # Puzzle type selection
         tk.Label(
             scramble_frame,
-            text="3x3 scramble length:",
+            text="Puzzle type:",
             font=(theme["font_family"], 10),
             bg=theme["bg"],
             fg=theme["text_primary"],
         ).pack(anchor=tk.W, padx=10, pady=(10, 5))
+
+        # Import scramble manager to get available types
+        from .scramble import ScrambleManager
+
+        available_types = ScrambleManager().get_available_types()
+
+        self.puzzle_type_var = tk.StringVar(value="3x3x3")
+        puzzle_combo = ttk.Combobox(
+            scramble_frame,
+            textvariable=self.puzzle_type_var,
+            values=available_types,
+            state="readonly",
+            width=30,
+        )
+        puzzle_combo.pack(anchor=tk.W, padx=10, pady=(0, 10))
+
+        # Scramble length (only for applicable puzzles)
+        tk.Label(
+            scramble_frame,
+            text="Scramble length (for cubes):",
+            font=(theme["font_family"], 10),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+        ).pack(anchor=tk.W, padx=10, pady=(5, 0))
 
         self.scramble_length_var = tk.StringVar(value="20")
         scramble_length_entry = tk.Entry(
@@ -258,6 +283,7 @@ class SettingsDialog:
         # Store other settings (would need to be implemented in main app)
         self.result = {
             "theme": self.theme_var.get(),
+            "puzzle_type": self.puzzle_type_var.get(),
             "inspection": self.inspection_var.get(),
             "hold_time": int(self.hold_time_var.get()),
             "scramble_length": int(self.scramble_length_var.get()),
@@ -277,6 +303,7 @@ class SettingsDialog:
     def _reset_defaults(self):
         """Reset all settings to defaults."""
         self.theme_var.set("csTimer")
+        self.puzzle_type_var.set("3x3x3")
         self.inspection_var.set(False)
         self.hold_time_var.set("300")
         self.scramble_length_var.set("20")
