@@ -2,6 +2,18 @@
 
 A modern, feature-rich Rubik's cube timer application inspired by csTimer, built with Python and Tkinter.
 
+![PSTimer Logo](logo.png)
+
+---
+
+## 👥 For End Users
+
+**🚀 [USER_README.md](USER_README.md) - Complete user guide with download instructions, features overview, and how to use PSTimer.**
+
+---
+
+## 🔧 For Developers
+
 ![PSTimer Screenshot](docs/screenshot.png)
 
 ## Features
@@ -228,6 +240,123 @@ To add a new theme:
 - [ ] Full cube state simulation
 - [ ] Inspection time feature
 - [ ] Solve penalties (+2, DNF)
+
+## 📦 Packaging & Distribution
+
+### Creating Standalone Executables
+
+To create standalone executables for distribution, you can use PyInstaller:
+
+#### Prerequisites
+```bash
+pip install pyinstaller
+```
+
+#### Windows Executable
+```bash
+# Create a single executable file
+pyinstaller --onefile --windowed --name PSTimer --icon=logo.ico main.py
+
+# Or create a directory distribution (faster startup)
+pyinstaller --windowed --name PSTimer --icon=logo.ico main.py
+```
+
+#### macOS App Bundle
+```bash
+# Create .app bundle
+pyinstaller --onefile --windowed --name PSTimer --icon=logo.icns main.py
+```
+
+#### Linux Executable
+```bash
+# Create Linux executable
+pyinstaller --onefile --name PSTimer main.py
+```
+
+#### Advanced Packaging Options
+```bash
+# Include additional files (if needed)
+pyinstaller --onefile --windowed --name PSTimer --icon=logo.ico \
+    --add-data "logo.png;." \
+    --add-data "src;src" \
+    main.py
+```
+
+### Distribution Package Structure
+After building, create distribution packages:
+
+```
+PSTimer-v1.0-Windows/
+├── PSTimer.exe
+├── logo.png
+├── USER_README.md
+└── LICENSE
+
+PSTimer-v1.0-macOS/
+├── PSTimer.app/
+├── logo.png
+├── USER_README.md
+└── LICENSE
+
+PSTimer-v1.0-Linux/
+├── PSTimer
+├── logo.png
+├── USER_README.md
+└── LICENSE
+```
+
+### Creating Releases
+1. **Build for all platforms** using the commands above
+2. **Test executables** on clean systems
+3. **Create ZIP packages** for each platform
+4. **Upload to GitHub Releases** with version tags
+5. **Include USER_README.md** in each package for end users
+
+### Icon Conversion
+To create icons for different platforms:
+
+```bash
+# Convert PNG to ICO (Windows)
+# Use online converter or ImageMagick:
+convert logo.png -define icon:auto-resize=16,24,32,48,64,128,256 logo.ico
+
+# Convert PNG to ICNS (macOS)
+# Use iconutil or online converter
+mkdir logo.iconset
+sips -z 16 16 logo.png --out logo.iconset/icon_16x16.png
+sips -z 32 32 logo.png --out logo.iconset/icon_16x16@2x.png
+# ... (repeat for all sizes)
+iconutil -c icns logo.iconset
+```
+
+### GitHub Actions (Optional)
+Create `.github/workflows/build.yml` for automatic building:
+
+```yaml
+name: Build PSTimer
+on: [push, release]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: pip install pyinstaller
+    - name: Build executable
+      run: pyinstaller --onefile --windowed --name PSTimer main.py
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: PSTimer-${{ matrix.os }}
+        path: dist/
+```
 
 ## License
 

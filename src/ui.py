@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 import time
+import os
 
 from .timer import Stopwatch
 from .scramble import ScrambleManager
@@ -61,6 +62,9 @@ class PSTimerUI(tk.Tk):
         self.geometry("1200x800")
         self.minsize(900, 600)
 
+        # Set window icon if logo.png exists
+        self._set_window_icon()
+
         # Apply theme
         theme = self.theme_manager.get_theme()
         self.configure(bg=theme["bg"])
@@ -68,6 +72,37 @@ class PSTimerUI(tk.Tk):
         # Configure grid weights
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(1, weight=1)
+
+    def _set_window_icon(self):
+        """Set the window icon using logo.png if available."""
+        try:
+            # Get the directory containing main.py (project root)
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            logo_path = os.path.join(project_root, "logo.png")
+
+            if os.path.exists(logo_path):
+                # Try to use the PNG directly (works on some systems)
+                try:
+                    self.iconphoto(True, tk.PhotoImage(file=logo_path))
+                except tk.TclError:
+                    # If PNG doesn't work, try converting to ICO format if Pillow is available
+                    try:
+                        from PIL import Image
+
+                        img = Image.open(logo_path)
+                        # Convert to ICO and save temporarily
+                        ico_path = os.path.join(project_root, "logo.ico")
+                        img.save(ico_path, format="ICO")
+                        self.iconbitmap(ico_path)
+                    except ImportError:
+                        # Pillow not available, use default icon
+                        pass
+                    except Exception:
+                        # Any other error, use default icon
+                        pass
+        except Exception:
+            # If anything fails, just use the default icon
+            pass
 
     def _create_ui(self):
         """Create the main UI layout."""
@@ -132,14 +167,48 @@ class PSTimerUI(tk.Tk):
         menu_btn.pack(side=tk.LEFT, padx=2)
 
         # Center - Logo/Title
+        center_frame = tk.Frame(top_bar, bg=theme["secondary_bg"])
+        center_frame.pack(side=tk.LEFT, expand=True)
+
+        # Try to load and display logo
+        logo_loaded = False
+        try:
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            logo_path = os.path.join(project_root, "logo.png")
+
+            if os.path.exists(logo_path):
+                try:
+                    # Load logo image (resize to fit top bar)
+                    logo_img = tk.PhotoImage(file=logo_path)
+                    # Scale down if too large (subsample by factor of 2, 3, etc.)
+                    width, height = logo_img.width(), logo_img.height()
+                    if height > 30:  # Scale down to fit in top bar
+                        scale_factor = max(1, height // 30)
+                        logo_img = logo_img.subsample(scale_factor, scale_factor)
+
+                    logo_label = tk.Label(
+                        center_frame,
+                        image=logo_img,
+                        bg=theme["secondary_bg"],
+                    )
+                    logo_label.image = logo_img  # Keep a reference
+                    logo_label.pack(side=tk.LEFT, padx=(0, 5))
+                    logo_loaded = True
+                except tk.TclError:
+                    # PNG format not supported, continue without logo
+                    pass
+        except Exception:
+            # Any error loading logo, continue without it
+            pass
+
         title_label = tk.Label(
-            top_bar,
+            center_frame,
             text="PSTimer",
             font=(theme["font_family"], 20, "bold"),
             bg=theme["secondary_bg"],
             fg=theme["text_primary"],
         )
-        title_label.pack(side=tk.LEFT, expand=True)
+        title_label.pack(side=tk.LEFT)
 
         # Right side - Scramble type and navigation
         right_frame = tk.Frame(top_bar, bg=theme["secondary_bg"])
