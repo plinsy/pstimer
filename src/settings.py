@@ -10,18 +10,24 @@ class SettingsDialog:
     """Settings configuration dialog."""
 
     def __init__(
-        self, parent, theme_manager, session_manager, current_transparency=1.0
+        self,
+        parent,
+        theme_manager,
+        session_manager,
+        current_transparency=1.0,
+        current_compact_position="top-right",
     ):
         self.parent = parent
         self.theme_manager = theme_manager
         self.session_manager = session_manager
         self.current_transparency = current_transparency
+        self.current_compact_position = current_compact_position
         self.result = None
 
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("PSTimer Settings")
-        self.dialog.geometry("400x550")  # Increased height for transparency controls
+        self.dialog.geometry("400x600")  # Increased height for compact mode controls
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -145,6 +151,34 @@ class SettingsDialog:
             transparency_label.config(text=f"{percentage}%")
 
         self.transparency_var.trace("w", update_transparency_label)
+
+        # Compact mode settings
+        tk.Label(
+            theme_frame,
+            text="Compact mode position:",
+            font=(theme["font_family"], 10),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+        ).pack(anchor=tk.W, padx=10, pady=(15, 5))
+
+        tk.Label(
+            theme_frame,
+            text="(Use Ctrl+M to toggle, Ctrl+1-4 for positions)",
+            font=(theme["font_family"], 8),
+            bg=theme["bg"],
+            fg=theme["text_secondary"],
+        ).pack(anchor=tk.W, padx=10, pady=(0, 5))
+
+        self.compact_position_var = tk.StringVar(value=self.current_compact_position)
+        compact_positions = ["top-left", "top-right", "bottom-left", "bottom-right"]
+        compact_combo = ttk.Combobox(
+            theme_frame,
+            textvariable=self.compact_position_var,
+            values=compact_positions,
+            state="readonly",
+            width=15,
+        )
+        compact_combo.pack(anchor=tk.W, padx=10, pady=(0, 10))
 
         # Timer settings
         timer_frame = tk.LabelFrame(
@@ -342,6 +376,7 @@ class SettingsDialog:
         self.result = {
             "theme": self.theme_var.get(),
             "transparency": self.transparency_var.get(),
+            "compact_position": self.compact_position_var.get(),
             "puzzle_type": self.puzzle_type_var.get(),
             "inspection": self.inspection_var.get(),
             "hold_time": int(self.hold_time_var.get()),
@@ -363,6 +398,7 @@ class SettingsDialog:
         """Reset all settings to defaults."""
         self.theme_var.set("csTimer")
         self.transparency_var.set(1.0)
+        self.compact_position_var.set("top-right")
         self.puzzle_type_var.set("3x3x3")
         self.inspection_var.set(False)
         self.hold_time_var.set("300")
@@ -380,10 +416,18 @@ class SettingsDialog:
 
 
 def show_settings_dialog(
-    parent, theme_manager, session_manager, current_transparency=1.0
+    parent,
+    theme_manager,
+    session_manager,
+    current_transparency=1.0,
+    current_compact_position="top-right",
 ):
     """Show the settings dialog."""
     dialog = SettingsDialog(
-        parent, theme_manager, session_manager, current_transparency
+        parent,
+        theme_manager,
+        session_manager,
+        current_transparency,
+        current_compact_position,
     )
     return dialog.show()

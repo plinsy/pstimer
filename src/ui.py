@@ -37,6 +37,14 @@ class PSTimerUI(tk.Tk):
         self.transparency = 1.0  # Default transparency (fully opaque)
         self.user_settings = {}  # Store user settings
 
+        # Compact mode state
+        self.is_compact_mode = False
+        self.compact_position = (
+            "top-right"  # top-left, top-right, bottom-left, bottom-right
+        )
+        self.normal_geometry = None  # Store normal window size/position
+        self.compact_widgets = {}  # Store compact mode widgets
+
         # Animation variables
         self.pulse_scale = 1.0
         self.bg_animation_id = None
@@ -469,6 +477,23 @@ class PSTimerUI(tk.Tk):
             "<Control-0>", lambda e: self._reset_transparency()
         )  # Ctrl + 0 (reset to opaque)
 
+        # Compact mode controls
+        self.bind(
+            "<Control-m>", lambda e: self._toggle_compact_mode()
+        )  # Ctrl + M (toggle compact mode)
+        self.bind(
+            "<Control-1>", lambda e: self._set_compact_position("top-left")
+        )  # Ctrl + 1
+        self.bind(
+            "<Control-2>", lambda e: self._set_compact_position("top-right")
+        )  # Ctrl + 2
+        self.bind(
+            "<Control-3>", lambda e: self._set_compact_position("bottom-left")
+        )  # Ctrl + 3
+        self.bind(
+            "<Control-4>", lambda e: self._set_compact_position("bottom-right")
+        )  # Ctrl + 4
+
         self.bind("<KeyPress>", self._on_any_key)
 
         self.focus_set()  # Ensure window can receive key events
@@ -483,17 +508,26 @@ class PSTimerUI(tk.Tk):
         current_time = self.stopwatch.get_time()
         formatted_time = self.stopwatch.format_time(current_time)
 
-        # Update main timer
-        self.timer_label.config(text=formatted_time)
+        # Update main timer (if in normal mode and widget exists)
+        if not self.is_compact_mode and hasattr(self, "timer_label"):
+            try:
+                self.timer_label.config(text=formatted_time)
 
-        # Change color based on state
-        theme = self.theme_manager.get_theme()
-        if self.is_ready:
-            self.timer_label.config(fg=theme["timer_ready"])
-        elif self.stopwatch.running:
-            self.timer_label.config(fg=theme["timer_running"])
-        else:
-            self.timer_label.config(fg=theme["timer_color"])
+                # Change color based on state
+                theme = self.theme_manager.get_theme()
+                if self.is_ready:
+                    self.timer_label.config(fg=theme["timer_ready"])
+                elif self.stopwatch.running:
+                    self.timer_label.config(fg=theme["timer_running"])
+                else:
+                    self.timer_label.config(fg=theme["timer_color"])
+            except tk.TclError:
+                # Widget has been destroyed, ignore
+                pass
+
+        # Update compact display (if in compact mode)
+        if self.is_compact_mode:
+            self._update_compact_display()
 
         # Schedule next update
         self.after(50, self._update_timer_display)
@@ -573,110 +607,194 @@ class PSTimerUI(tk.Tk):
         """Update all statistics displays."""
         stats = self.session_manager.current_session.get_statistics()
 
-        # Update current stats in left panel
-        if "mo3" in self.stats_labels:
-            current_label, _ = self.stats_labels["mo3"]
-            mo3_text = (
-                self.stopwatch.format_time(stats["mo3"]) if stats["mo3"] else "---"
-            )
-            current_label.config(text=mo3_text)
+        # Only update UI elements if not in compact mode
+        if not self.is_compact_mode:
+            # Update current stats in left panel
+            if "mo3" in self.stats_labels:
+                current_label, _ = self.stats_labels["mo3"]
+                mo3_text = (
+                    self.stopwatch.format_time(stats["mo3"]) if stats["mo3"] else "---"
+                )
+                try:
+                    current_label.config(text=mo3_text)
+                except tk.TclError:
+                    # Widget has been destroyed, ignore
+                    pass
 
-        if "ao5" in self.stats_labels:
-            current_label, _ = self.stats_labels["ao5"]
-            ao5_text = (
-                self.stopwatch.format_time(stats["ao5"]) if stats["ao5"] else "---"
-            )
-            current_label.config(text=ao5_text)
+            if "ao5" in self.stats_labels:
+                current_label, _ = self.stats_labels["ao5"]
+                ao5_text = (
+                    self.stopwatch.format_time(stats["ao5"]) if stats["ao5"] else "---"
+                )
+                try:
+                    current_label.config(text=ao5_text)
+                except tk.TclError:
+                    # Widget has been destroyed, ignore
+                    pass
 
-        if "ao12" in self.stats_labels:
-            current_label, _ = self.stats_labels["ao12"]
-            ao12_text = (
-                self.stopwatch.format_time(stats["ao12"]) if stats["ao12"] else "---"
-            )
-            current_label.config(text=ao12_text)
+            if "ao12" in self.stats_labels:
+                current_label, _ = self.stats_labels["ao12"]
+                ao12_text = (
+                    self.stopwatch.format_time(stats["ao12"])
+                    if stats["ao12"]
+                    else "---"
+                )
+                try:
+                    current_label.config(text=ao12_text)
+                except tk.TclError:
+                    # Widget has been destroyed, ignore
+                    pass
 
-        # Update center panel stats
-        if stats["ao5"]:
-            self.ao5_below_label.config(
-                text=f"ao5: {self.stopwatch.format_time(stats['ao5'])}"
-            )
-        if stats["ao12"]:
-            self.ao12_below_label.config(
-                text=f"ao12: {self.stopwatch.format_time(stats['ao12'])}"
-            )
+            # Update center panel stats
+            try:
+                if stats["ao5"]:
+                    self.ao5_below_label.config(
+                        text=f"ao5: {self.stopwatch.format_time(stats['ao5'])}"
+                    )
+                if stats["ao12"]:
+                    self.ao12_below_label.config(
+                        text=f"ao12: {self.stopwatch.format_time(stats['ao12'])}"
+                    )
 
-        # Update solve count
-        session = self.session_manager.current_session
-        self.solve_count_label.config(text=f"solve: {len(session)}/{len(session)}")
+                # Update solve count
+                session = self.session_manager.current_session
+                self.solve_count_label.config(
+                    text=f"solve: {len(session)}/{len(session)}"
+                )
 
-        if stats["mean"]:
-            self.mean_label.config(
-                text=f"mean: {self.stopwatch.format_time(stats['mean'])}"
-            )
+                if stats["mean"]:
+                    self.mean_label.config(
+                        text=f"mean: {self.stopwatch.format_time(stats['mean'])}"
+                    )
+            except tk.TclError:
+                # Widgets have been destroyed, ignore
+                pass
 
     def _update_times_list(self):
         """Update the times list display."""
+        # Only update if not in compact mode
+        if self.is_compact_mode:
+            return
+
         session = self.session_manager.current_session
 
-        # Clear current list
-        self.times_listbox.delete(0, tk.END)
+        try:
+            # Clear current list
+            self.times_listbox.delete(0, tk.END)
 
-        # Add times with stats
-        for i, solve in enumerate(session.times[:20]):  # Show last 20
-            time_str = self.stopwatch.format_time(solve.time)
+            # Add times with stats
+            for i, solve in enumerate(session.times[:20]):  # Show last 20
+                time_str = self.stopwatch.format_time(solve.time)
 
-            # Calculate ao5 and ao12 for this position
-            ao5_str = "---"
-            ao12_str = "---"
+                # Calculate ao5 and ao12 for this position
+                ao5_str = "---"
+                ao12_str = "---"
 
-            if i >= 4:  # Need at least 5 times for ao5
-                recent_5 = session.times[i - 4 : i + 1]
-                if len(recent_5) == 5:
-                    ao5_val = session.stats_calc.calculate_ao5(recent_5)
-                    if ao5_val:
-                        ao5_str = self.stopwatch.format_time(ao5_val)
+                if i >= 4:  # Need at least 5 times for ao5
+                    recent_5 = session.times[i - 4 : i + 1]
+                    if len(recent_5) == 5:
+                        ao5_val = session.stats_calc.calculate_ao5(recent_5)
+                        if ao5_val:
+                            ao5_str = self.stopwatch.format_time(ao5_val)
 
-            if i >= 11:  # Need at least 12 times for ao12
-                recent_12 = session.times[i - 11 : i + 1]
-                if len(recent_12) == 12:
-                    ao12_val = session.stats_calc.calculate_ao12(recent_12)
-                    if ao12_val:
-                        ao12_str = self.stopwatch.format_time(ao12_val)
+                if i >= 11:  # Need at least 12 times for ao12
+                    recent_12 = session.times[i - 11 : i + 1]
+                    if len(recent_12) == 12:
+                        ao12_val = session.stats_calc.calculate_ao12(recent_12)
+                        if ao12_val:
+                            ao12_str = self.stopwatch.format_time(ao12_val)
 
-            solve_num = len(session.times) - i
-            line = f"{solve_num:3d}  {time_str:>6}  {ao5_str:>6}  {ao12_str:>6}"
-            self.times_listbox.insert(tk.END, line)
+                solve_num = len(session.times) - i
+                line = f"{solve_num:3d}  {time_str:>6}  {ao5_str:>6}  {ao12_str:>6}"
+                self.times_listbox.insert(tk.END, line)
+        except tk.TclError:
+            # Widget has been destroyed, ignore
+            pass
 
     def _update_session_display(self):
         """Update the session information display."""
+        # Only update if not in compact mode
+        if self.is_compact_mode:
+            return
+
         puzzle_type = self.scramble_type_var.get()
         solve_count = len(self.session_manager.current_session)
 
         # Update session label
-        self.session_label.config(
-            text=f"Session - {puzzle_type} ({solve_count} solves)"
-        )
+        try:
+            self.session_label.config(
+                text=f"Session - {puzzle_type} ({solve_count} solves)"
+            )
+        except tk.TclError:
+            # Widget has been destroyed, ignore
+            pass
 
     def _generate_new_scramble(self):
         """Generate and display a new scramble."""
         scramble = self.scramble_manager.generate_new()
-        self.scramble_label.config(text=scramble)
 
-        # Apply to cube visualization
-        self.cube_viz.apply_scramble(scramble)
+        # Update scramble display based on current mode
+        if self.is_compact_mode:
+            try:
+                self.compact_widgets["scramble"].config(text=scramble)
+            except (tk.TclError, KeyError):
+                pass
+        else:
+            try:
+                self.scramble_label.config(text=scramble)
+            except tk.TclError:
+                pass
+
+        # Apply to cube visualization (only in normal mode)
+        if not self.is_compact_mode:
+            try:
+                self.cube_viz.apply_scramble(scramble)
+            except tk.TclError:
+                pass
 
     def _previous_scramble(self):
         """Go to previous scramble."""
         scramble = self.scramble_manager.get_previous()
         if scramble:
-            self.scramble_label.config(text=scramble)
-            self.cube_viz.apply_scramble(scramble)
+            # Update scramble display based on current mode
+            if self.is_compact_mode:
+                try:
+                    self.compact_widgets["scramble"].config(text=scramble)
+                except (tk.TclError, KeyError):
+                    pass
+            else:
+                try:
+                    self.scramble_label.config(text=scramble)
+                except tk.TclError:
+                    pass
+            # Apply to cube visualization (only in normal mode)
+            if not self.is_compact_mode:
+                try:
+                    self.cube_viz.apply_scramble(scramble)
+                except tk.TclError:
+                    pass
 
     def _next_scramble(self):
         """Go to next scramble."""
         scramble = self.scramble_manager.get_next()
-        self.scramble_label.config(text=scramble)
-        self.cube_viz.apply_scramble(scramble)
+
+        # Update scramble display based on current mode
+        if self.is_compact_mode:
+            try:
+                self.compact_widgets["scramble"].config(text=scramble)
+            except (tk.TclError, KeyError):
+                pass
+        else:
+            try:
+                self.scramble_label.config(text=scramble)
+            except tk.TclError:
+                pass
+        # Apply to cube visualization (only in normal mode)
+        if not self.is_compact_mode:
+            try:
+                self.cube_viz.apply_scramble(scramble)
+            except tk.TclError:
+                pass
 
     def _on_scramble_type_change(self, event):
         """Handle scramble type change."""
@@ -701,6 +819,213 @@ class PSTimerUI(tk.Tk):
         self.transparency = 1.0
         self.attributes("-alpha", self.transparency)
 
+    def _toggle_compact_mode(self):
+        """Toggle between normal and compact mode."""
+        if self.is_compact_mode:
+            self._exit_compact_mode()
+        else:
+            self._enter_compact_mode()
+
+    def _enter_compact_mode(self):
+        """Enter compact mode showing only timer and scramble."""
+        if self.is_compact_mode:
+            return
+
+        # Store current window geometry
+        self.normal_geometry = self.geometry()
+        self.is_compact_mode = True
+
+        # Hide all existing widgets by destroying main UI
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        # Create compact UI first
+        self._create_compact_ui()
+
+        # Position window based on compact_position (this will also set size)
+        self._position_compact_window()
+
+    def _exit_compact_mode(self):
+        """Exit compact mode and restore normal UI."""
+        if not self.is_compact_mode:
+            return
+
+        self.is_compact_mode = False
+
+        # Remove topmost attribute
+        self.attributes("-topmost", False)
+
+        # Reset window size constraints
+        self.resizable(True, True)
+        self.minsize(900, 600)  # Reset to normal minimum size
+        self.maxsize(0, 0)  # Remove maximum size limit
+
+        # Clear compact widgets
+        for widget in self.winfo_children():
+            widget.destroy()
+        self.compact_widgets.clear()
+
+        # Restore normal UI
+        self._create_ui()
+
+        # Restore window geometry
+        if self.normal_geometry:
+            self.geometry(self.normal_geometry)
+
+        # Refresh displays
+        self._update_session_display()
+
+    def _create_compact_ui(self):
+        """Create the compact mode UI with minimal elements."""
+        theme = self.theme_manager.get_theme()
+
+        # Configure window for compact mode
+        self.configure(bg=theme["bg"])
+
+        # Main compact frame
+        compact_frame = tk.Frame(self, bg=theme["bg"], padx=10, pady=10)
+        compact_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Timer display (large and prominent)
+        self.compact_widgets["timer"] = tk.Label(
+            compact_frame,
+            text="00:00.00",
+            font=(theme["mono_font"], 20, "bold"),
+            bg=theme["bg"],
+            fg=theme["timer_color"],
+        )
+        self.compact_widgets["timer"].pack(pady=(0, 10))
+
+        # Scramble display (smaller but readable)
+        self.compact_widgets["scramble"] = tk.Label(
+            compact_frame,
+            text="Loading scramble...",
+            font=(theme["font_family"], 10),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+            wraplength=250,
+            justify=tk.CENTER,
+        )
+        self.compact_widgets["scramble"].pack(pady=(0, 10))
+
+        # Quick controls row
+        controls_frame = tk.Frame(compact_frame, bg=theme["bg"])
+        controls_frame.pack()
+
+        # Exit compact mode button
+        exit_btn = tk.Button(
+            controls_frame,
+            text="↗",  # Expand icon
+            command=self._exit_compact_mode,
+            font=(theme["font_family"], 12, "bold"),
+            width=3,
+            bg=theme["accent"],
+            fg="white",
+        )
+        exit_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # New scramble button
+        scramble_btn = tk.Button(
+            controls_frame,
+            text="S",
+            command=self._generate_new_scramble,
+            font=(theme["font_family"], 10, "bold"),
+            width=3,
+            bg=theme["button_bg"],
+            fg=theme["text_primary"],
+        )
+        scramble_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Reset button
+        reset_btn = tk.Button(
+            controls_frame,
+            text="R",
+            command=self._reset_timer,
+            font=(theme["font_family"], 10, "bold"),
+            width=3,
+            bg=theme["button_bg"],
+            fg=theme["text_primary"],
+        )
+        reset_btn.pack(side=tk.LEFT)
+
+        # Update compact display with current data
+        self._update_compact_display()
+
+    def _update_compact_display(self):
+        """Update the compact mode display elements."""
+        if not self.is_compact_mode:
+            return
+
+        # Update timer display
+        if "timer" in self.compact_widgets:
+            current_time = self.stopwatch.get_time()
+            time_text = self.stopwatch.format_time(current_time)
+
+            # Color based on timer state
+            theme = self.theme_manager.get_theme()
+            if self.stopwatch.running:
+                color = theme["timer_running"]
+            elif self.is_ready:
+                color = theme["timer_ready"]
+            else:
+                color = theme["timer_color"]
+
+            self.compact_widgets["timer"].config(text=time_text, fg=color)
+
+        # Update scramble display
+        if "scramble" in self.compact_widgets:
+            current_scramble = self.scramble_manager.get_current()
+            if current_scramble:
+                self.compact_widgets["scramble"].config(text=current_scramble)
+
+    def _position_compact_window(self):
+        """Position the compact window based on compact_position setting."""
+        # Define compact window dimensions (fixed size for consistency)
+        window_width = 280
+        window_height = 150
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Calculate position based on compact_position
+        margin = 20  # Margin from screen edges
+
+        if self.compact_position == "top-left":
+            x, y = margin, margin
+        elif self.compact_position == "top-right":
+            x, y = screen_width - window_width - margin, margin
+        elif self.compact_position == "bottom-left":
+            x, y = margin, screen_height - window_height - margin
+        elif self.compact_position == "bottom-right":
+            x, y = (
+                screen_width - window_width - margin,
+                screen_height - window_height - margin,
+            )
+        else:
+            x, y = margin, margin  # Default to top-left
+
+        # Set window size and position with explicit dimensions
+        self.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # Configure window properties for compact mode
+        self.minsize(window_width, window_height)
+        self.maxsize(window_width, window_height)
+        self.resizable(False, False)
+
+        # Make window stay on top in compact mode
+        self.attributes("-topmost", True)
+
+        # Ensure window is properly positioned (additional updates)
+        self.update_idletasks()
+        self.update()
+
+    def _set_compact_position(self, position):
+        """Set the compact mode position and reposition if currently compact."""
+        self.compact_position = position
+        if self.is_compact_mode:
+            self._position_compact_window()
+
     def _show_settings(self):
         """Show settings dialog and apply changes."""
         result = show_settings_dialog(
@@ -708,6 +1033,7 @@ class PSTimerUI(tk.Tk):
             self.theme_manager,
             self.session_manager,
             current_transparency=self.transparency,
+            current_compact_position=self.compact_position,
         )
         if result:
             # Apply settings
@@ -739,6 +1065,12 @@ class PSTimerUI(tk.Tk):
             self.transparency = transparency
             self.attributes("-alpha", transparency)
 
+        # Apply compact position setting
+        if "compact_position" in settings:
+            self.compact_position = settings["compact_position"]
+            if self.is_compact_mode:
+                self._position_compact_window()
+
         # Store settings for future use
         self.user_settings = settings
 
@@ -749,6 +1081,7 @@ class PSTimerUI(tk.Tk):
             f"Puzzle type: {settings.get('puzzle_type', 'unchanged')}\n"
             f"Inspection time: {'Enabled' if settings.get('inspection', False) else 'Disabled'}\n"
             f"Transparency: {int(settings.get('transparency', 1.0) * 100)}%\n"
+            f"Compact position: {settings.get('compact_position', 'unchanged')}\n"
             f"Theme: {settings.get('theme', 'unchanged')}",
         )
 

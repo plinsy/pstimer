@@ -16,6 +16,7 @@ A modern, feature-rich Rubik's cube timer application inspired by csTimer, built
 - **3D cube visualization** - Interactive 3D cube that shows scramble state
 - **Multiple themes** - csTimer, Dark, and Blue themes
 - **Window transparency** - Adjustable transparency for multitasking while solving
+- **Compact mode** - Minimal overlay mode with corner positioning for extreme multitasking
 
 ### 🎯 Timer Features
 - **Space bar controls** - Hold space to ready, release to start, any key to stop
@@ -60,6 +61,8 @@ A modern, feature-rich Rubik's cube timer application inspired by csTimer, built
 - **Ctrl + =**: Increase window transparency (more opaque)
 - **Ctrl + -**: Decrease window transparency (more see-through)
 - **Ctrl + 0**: Reset transparency to fully opaque
+- **Ctrl + M**: Toggle compact mode (minimal overlay)
+- **Ctrl + 1-4**: Set compact position (top-left/top-right/bottom-left/bottom-right)
 
 ### Timer Workflow
 1. **Ready**: Hold space bar until timer turns green

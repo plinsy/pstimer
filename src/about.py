@@ -104,6 +104,7 @@ class AboutDialog:
             "• Session management",
             "• Multiple themes",
             "• Window transparency for multitasking",
+            "• Compact mode with corner positioning",
         ]
 
         for feature in features:
@@ -135,6 +136,8 @@ class AboutDialog:
             "• Ctrl + =: Increase transparency",
             "• Ctrl + -: Decrease transparency",
             "• Ctrl + 0: Reset transparency",
+            "• Ctrl + M: Toggle compact mode",
+            "• Ctrl + 1-4: Set compact position (TL/TR/BL/BR)",
         ]
 
         for control in controls:
