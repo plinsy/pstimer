@@ -86,6 +86,13 @@ class SolveTime:
             return self.time + 2.0
         return self.time
 
+    @property
+    def formatted_time(self):
+        """Get formatted time string."""
+        from .timer import Stopwatch
+
+        return str(self)
+
     def __str__(self):
         from .timer import Stopwatch
 
@@ -118,6 +125,10 @@ class Session:
     def clear_times(self):
         """Clear all times from the session."""
         self.times.clear()
+
+    def clear(self):
+        """Alias for clear_times for consistency."""
+        self.clear_times()
 
     def get_statistics(self):
         """Get all statistics for the session."""
@@ -154,6 +165,12 @@ class SessionManager:
             name = f"Session {len(self.sessions) + 1}"
         session = Session(name)
         self.sessions.append(session)
+        return session
+
+    def new_session(self, name=None):
+        """Create a new session and switch to it."""
+        session = self.add_session(name)
+        self.current_session_index = len(self.sessions) - 1
         return session
 
     def switch_session(self, index):

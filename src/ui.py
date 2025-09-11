@@ -33,6 +33,8 @@ class PSTimerUI(tk.Tk):
         self.ready_start_time = None
         self.inspection_time = None
         self.inspection_enabled = False
+        self.hold_time = 300  # Default hold time in milliseconds
+        self.user_settings = {}  # Store user settings
 
         # Animation variables
         self.pulse_scale = 1.0
@@ -41,6 +43,7 @@ class PSTimerUI(tk.Tk):
         self._setup_window()
         self._create_ui()
         self._setup_bindings()
+        self._update_session_display()  # Initialize session display
         self._start_ui_loop()
 
     def _setup_window(self):
@@ -192,14 +195,14 @@ class PSTimerUI(tk.Tk):
         session_frame = tk.Frame(left_panel, bg=theme["sidebar_bg"])
         session_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        session_label = tk.Label(
+        self.session_label = tk.Label(
             session_frame,
-            text="Session 9.10.333 X",
+            text="Session - 3x3x3",
             font=(theme["font_family"], 12, "bold"),
             bg=theme["sidebar_bg"],
             fg=theme["text_primary"],
         )
-        session_label.pack(anchor=tk.W)
+        self.session_label.pack(anchor=tk.W)
 
         # Current/Best times
         times_frame = tk.Frame(left_panel, bg=theme["sidebar_bg"])
@@ -492,6 +495,10 @@ class PSTimerUI(tk.Tk):
             self.ready_start_time = time.time()
             self.stopwatch.reset()
 
+            # Start inspection time if enabled
+            if self.inspection_enabled:
+                self.inspection_time = time.time()
+
     def _on_space_release(self, event):
         """Handle space key release."""
         if self.stopwatch.running:
@@ -502,11 +509,32 @@ class PSTimerUI(tk.Tk):
         elif self.is_ready:
             # Check if held long enough
             hold_time = time.time() - (self.ready_start_time or 0)
-            if hold_time >= 0.3:  # 300ms minimum hold
+            hold_threshold = self.hold_time / 1000.0  # Convert ms to seconds
+
+            if hold_time >= hold_threshold:
+                # Check inspection time if enabled
+                if self.inspection_enabled and self.inspection_time:
+                    inspection_elapsed = time.time() - self.inspection_time
+                    if inspection_elapsed > 17.0:  # Over 17 seconds = DNF
+                        messagebox.showwarning(
+                            "Inspection Time",
+                            "Inspection time exceeded 17 seconds - DNF!",
+                        )
+                        self.is_ready = False
+                        self.inspection_time = None
+                        return
+                    elif inspection_elapsed > 15.0:  # Over 15 seconds = +2 penalty
+                        messagebox.showinfo(
+                            "Inspection Time",
+                            "Inspection time over 15 seconds - +2 penalty will be applied",
+                        )
+
                 self.stopwatch.start()
                 self.is_ready = False
+                self.inspection_time = None
             else:
                 self.is_ready = False
+                self.inspection_time = None
 
     def _on_any_key(self, event):
         """Handle any key press to stop timer."""
@@ -523,6 +551,7 @@ class PSTimerUI(tk.Tk):
         # Update displays
         self._update_statistics()
         self._update_times_list()
+        self._update_session_display()
 
         # Generate new scramble for next solve
         self.after(100, self._generate_new_scramble)
@@ -605,6 +634,16 @@ class PSTimerUI(tk.Tk):
             line = f"{solve_num:3d}  {time_str:>6}  {ao5_str:>6}  {ao12_str:>6}"
             self.times_listbox.insert(tk.END, line)
 
+    def _update_session_display(self):
+        """Update the session information display."""
+        puzzle_type = self.scramble_type_var.get()
+        solve_count = len(self.session_manager.current_session)
+
+        # Update session label
+        self.session_label.config(
+            text=f"Session - {puzzle_type} ({solve_count} solves)"
+        )
+
     def _generate_new_scramble(self):
         """Generate and display a new scramble."""
         scramble = self.scramble_manager.generate_new()
@@ -649,29 +688,64 @@ class PSTimerUI(tk.Tk):
             # Store other settings for later use
             self.settings = result
 
+    def _show_settings(self):
+        """Show settings dialog and apply changes."""
+        result = show_settings_dialog(self, self.theme_manager, self.session_manager)
+        if result:
+            # Apply settings
+            self._apply_settings(result)
+
+    def _apply_settings(self, settings):
+        """Apply settings from the settings dialog."""
+        # Apply puzzle type change
+        if "puzzle_type" in settings:
+            new_type = settings["puzzle_type"]
+            if self.scramble_manager.set_type(new_type):
+                self.scramble_type_var.set(new_type)
+                # Generate new scramble for the new puzzle type
+                self._generate_new_scramble()
+                # Update session display
+                self._update_session_display()
+
+        # Apply inspection time setting
+        if "inspection" in settings:
+            self.inspection_enabled = settings["inspection"]
+
+        # Apply hold time setting
+        if "hold_time" in settings:
+            self.hold_time = settings["hold_time"]
+
+        # Store settings for future use
+        self.user_settings = settings
+
+        # Show confirmation
+        messagebox.showinfo(
+            "Settings Applied",
+            f"Settings have been applied successfully!\n\n"
+            f"Puzzle type: {settings.get('puzzle_type', 'unchanged')}\n"
+            f"Inspection time: {'Enabled' if settings.get('inspection', False) else 'Disabled'}\n"
+            f"Theme: {settings.get('theme', 'unchanged')}",
+        )
+
     def _show_menu(self):
         """Show main menu."""
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(
             label="New Session",
-            command=lambda: messagebox.showinfo("Menu", "New Session not implemented"),
+            command=self._new_session,
         )
         menu.add_command(
-            label="Load Session",
-            command=lambda: messagebox.showinfo("Menu", "Load Session not implemented"),
-        )
-        menu.add_command(
-            label="Save Session",
-            command=lambda: messagebox.showinfo("Menu", "Save Session not implemented"),
+            label="Clear Session",
+            command=self._clear_session,
         )
         menu.add_separator()
         menu.add_command(
             label="Export Times",
-            command=lambda: messagebox.showinfo("Menu", "Export not implemented"),
+            command=self._export_times,
         )
         menu.add_command(
             label="Import Times",
-            command=lambda: messagebox.showinfo("Menu", "Import not implemented"),
+            command=lambda: messagebox.showinfo("Menu", "Import not yet implemented"),
         )
         menu.add_separator()
         menu.add_command(
@@ -686,6 +760,89 @@ class PSTimerUI(tk.Tk):
             menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
         finally:
             menu.grab_release()
+
+    def _new_session(self):
+        """Start a new session."""
+        if len(self.session_manager.current_session) > 0:
+            response = messagebox.askyesno(
+                "New Session",
+                f"Current session has {len(self.session_manager.current_session)} solves.\n"
+                "Are you sure you want to start a new session?",
+            )
+            if not response:
+                return
+
+        self.session_manager.new_session()
+        self._update_statistics()
+        self._update_times_list()
+        self._update_session_display()
+        self._generate_new_scramble()
+        messagebox.showinfo("New Session", "New session started!")
+
+    def _clear_session(self):
+        """Clear the current session."""
+        if len(self.session_manager.current_session) == 0:
+            messagebox.showinfo("Clear Session", "Session is already empty.")
+            return
+
+        response = messagebox.askyesno(
+            "Clear Session",
+            f"Are you sure you want to clear all {len(self.session_manager.current_session)} solves from the current session?",
+        )
+        if response:
+            self.session_manager.current_session.clear()
+            self._update_statistics()
+            self._update_times_list()
+            self._update_session_display()
+            messagebox.showinfo("Clear Session", "Session cleared!")
+
+    def _export_times(self):
+        """Export session times to a text file."""
+        from tkinter import filedialog
+
+        session = self.session_manager.current_session
+        if len(session) == 0:
+            messagebox.showinfo("Export Times", "No times to export.")
+            return
+
+        filename = filedialog.asksaveasfilename(
+            title="Export Times",
+            defaultextension=".txt",
+            filetypes=[
+                ("Text files", "*.txt"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if filename:
+            try:
+                with open(filename, "w") as f:
+                    f.write(f"PSTimer Session Export\n")
+                    f.write(f"Puzzle Type: {self.scramble_type_var.get()}\n")
+                    f.write(f"Total Solves: {len(session)}\n")
+                    f.write("=" * 50 + "\n\n")
+
+                    for i, solve in enumerate(session.times, 1):
+                        f.write(
+                            f"{i:3d}. {solve.formatted_time:>8s} - {solve.scramble}\n"
+                        )
+
+                    # Add statistics
+                    stats = session.get_statistics()
+                    f.write("\n" + "=" * 50 + "\n")
+                    f.write("Statistics:\n")
+                    f.write(f"Best: {stats.get('best', 'N/A')}\n")
+                    if stats.get("ao5"):
+                        f.write(f"ao5: {stats['ao5']}\n")
+                    if stats.get("ao12"):
+                        f.write(f"ao12: {stats['ao12']}\n")
+                    if stats.get("ao100"):
+                        f.write(f"ao100: {stats['ao100']}\n")
+
+                messagebox.showinfo("Export Complete", f"Times exported to {filename}")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Failed to export times:\n{e}")
 
     def _apply_theme(self):
         """Apply the current theme to all UI elements."""
