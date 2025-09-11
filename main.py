@@ -21,6 +21,51 @@ import time
 import random
 from datetime import datetime
 
+# ------------------- Statistics Calculator -------------------
+
+
+class StatisticsCalculator:
+    """Calculates speedcubing statistics like ao5, ao12, ao100, mo3."""
+
+    @staticmethod
+    def calculate_ao5(times):
+        """Calculate Average of 5 (remove best and worst, average the rest)."""
+        if len(times) < 5:
+            return None
+        recent_5 = [t[0] for t in times[:5]]  # Get just the time values
+        recent_5.sort()
+        # Remove best (first) and worst (last), average the middle 3
+        return sum(recent_5[1:4]) / 3
+
+    @staticmethod
+    def calculate_ao12(times):
+        """Calculate Average of 12 (remove best and worst, average the rest)."""
+        if len(times) < 12:
+            return None
+        recent_12 = [t[0] for t in times[:12]]
+        recent_12.sort()
+        # Remove best and worst, average the middle 10
+        return sum(recent_12[1:11]) / 10
+
+    @staticmethod
+    def calculate_ao100(times):
+        """Calculate Average of 100 (remove best 5 and worst 5, average the rest)."""
+        if len(times) < 100:
+            return None
+        recent_100 = [t[0] for t in times[:100]]
+        recent_100.sort()
+        # Remove best 5 and worst 5, average the middle 90
+        return sum(recent_100[5:95]) / 90
+
+    @staticmethod
+    def calculate_mo3(times):
+        """Calculate Mean of 3 (simple average of last 3 times)."""
+        if len(times) < 3:
+            return None
+        recent_3 = [t[0] for t in times[:3]]
+        return sum(recent_3) / 3
+
+
 # ------------------- Theme System -------------------
 
 
@@ -178,6 +223,7 @@ class TimerApp(tk.Tk):
         self.stopwatch = Stopwatch()
         self.scramble_gen = ThreeByThreeScramble()
         self.times = []  # list of (time_in_seconds, timestamp)
+        self.stats_calc = StatisticsCalculator()
 
         # UI elements
         self._build_ui()
@@ -282,6 +328,62 @@ class TimerApp(tk.Tk):
         right = tk.Frame(self, width=220, bg=theme["sidebar_bg"])
         right.pack(side=tk.RIGHT, fill=tk.Y, padx=12, pady=12)
         right.pack_propagate(False)
+
+        # Statistics section
+        stats_frame = tk.Frame(right, bg=theme["sidebar_bg"])
+        stats_frame.pack(fill=tk.X, pady=(6, 8))
+
+        tk.Label(
+            stats_frame,
+            text="Statistics",
+            bg=theme["sidebar_bg"],
+            fg=theme["text_fg"],
+            font=("Arial", 12, "bold"),
+        ).pack()
+
+        # Create statistics labels
+        stats_container = tk.Frame(stats_frame, bg=theme["sidebar_bg"])
+        stats_container.pack(fill=tk.X, pady=(4, 0))
+
+        self.mo3_label = tk.Label(
+            stats_container,
+            text="mo3: ---",
+            bg=theme["sidebar_bg"],
+            fg=theme["text_fg"],
+            font=("Consolas", 10),
+            anchor="w",
+        )
+        self.mo3_label.pack(fill=tk.X, padx=8)
+
+        self.ao5_label = tk.Label(
+            stats_container,
+            text="ao5: ---",
+            bg=theme["sidebar_bg"],
+            fg=theme["text_fg"],
+            font=("Consolas", 10),
+            anchor="w",
+        )
+        self.ao5_label.pack(fill=tk.X, padx=8)
+
+        self.ao12_label = tk.Label(
+            stats_container,
+            text="ao12: ---",
+            bg=theme["sidebar_bg"],
+            fg=theme["text_fg"],
+            font=("Consolas", 10),
+            anchor="w",
+        )
+        self.ao12_label.pack(fill=tk.X, padx=8)
+
+        self.ao100_label = tk.Label(
+            stats_container,
+            text="ao100: ---",
+            bg=theme["sidebar_bg"],
+            fg=theme["text_fg"],
+            font=("Consolas", 10),
+            anchor="w",
+        )
+        self.ao100_label.pack(fill=tk.X, padx=8)
 
         tk.Label(
             right,
@@ -395,6 +497,31 @@ class TimerApp(tk.Tk):
         if self.times_listbox.size() > 200:
             self.times_listbox.delete(200, tk.END)
 
+        # Update statistics
+        self._update_statistics()
+
+    def _update_statistics(self):
+        """Update all statistics displays."""
+        # Calculate statistics
+        mo3 = self.stats_calc.calculate_mo3(self.times)
+        ao5 = self.stats_calc.calculate_ao5(self.times)
+        ao12 = self.stats_calc.calculate_ao12(self.times)
+        ao100 = self.stats_calc.calculate_ao100(self.times)
+
+        # Update labels
+        self.mo3_label.config(
+            text=f"mo3: {self.stopwatch.format_time(mo3) if mo3 else '---'}"
+        )
+        self.ao5_label.config(
+            text=f"ao5: {self.stopwatch.format_time(ao5) if ao5 else '---'}"
+        )
+        self.ao12_label.config(
+            text=f"ao12: {self.stopwatch.format_time(ao12) if ao12 else '---'}"
+        )
+        self.ao100_label.config(
+            text=f"ao100: {self.stopwatch.format_time(ao100) if ao100 else '---'}"
+        )
+
     def copy_last(self):
         if self.times:
             last = self.stopwatch.format_time(self.times[0][0])
@@ -404,6 +531,8 @@ class TimerApp(tk.Tk):
     def clear_times(self):
         self.times = []
         self.times_listbox.delete(0, tk.END)
+        # Reset statistics display
+        self._update_statistics()
 
     def _show_ready_state(self):
         """Show visual feedback that the timer is ready to start."""
