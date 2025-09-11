@@ -243,6 +243,9 @@ class TimerApp(tk.Tk):
         self.bind("s", lambda e: self.new_scramble())
         self.bind("r", lambda e: self.reset_current())
 
+        # Bind any key press to stop timer if running
+        self.bind("<KeyPress>", self.any_key_pressed)
+
         # Make sure the window can receive focus
         self.focus_set()
 
@@ -317,7 +320,7 @@ class TimerApp(tk.Tk):
 
         hint = tk.Label(
             left,
-            text="Hold Space: Ready • Release Space: Start/Stop • S: New scramble • R: Reset",
+            text="Hold Space: Ready • Release Space: Start • Any Key: Stop • S: Scramble • R: Reset",
             bg=theme["bg"],
             fg=theme["hint_fg"],
             font=("Arial", 10),
@@ -483,6 +486,23 @@ class TimerApp(tk.Tk):
             self.stop_timer()
         else:
             self.start_timer()
+
+    def any_key_pressed(self, event=None):
+        """Handle any key press - stop timer if running, but allow special keys for other functions."""
+        # Only stop timer if it's running and it's not a special key we want to preserve
+        if self.stopwatch.running:
+            # Check if it's a key we want to handle specially
+            if event and hasattr(event, "keysym"):
+                key = event.keysym.lower()
+                # Don't stop timer for these special keys - let them handle their own functions
+                if key in ["s", "r"]:
+                    return
+                # Space is handled by space_released, so ignore it here to avoid double-stopping
+                if key == "space":
+                    return
+
+            # For any other key, stop the timer
+            self.stop_timer()
 
     def new_scramble(self, initial=False):
         self.current_scramble = self.scramble_gen.generate()
