@@ -324,15 +324,34 @@ class TimerApp(tk.Tk):
             self._record_time(elapsed)
             self._animate_scale_pulse(start=False)
 
+            # Auto-generate new scramble after solve (but don't reset timer)
+            self.after(100, self._auto_generate_scramble)
+
     def reset_current(self):
         self.stopwatch.reset()
         self.time_var.set(self.stopwatch.format_time(0.0))
         # small bounce animation to indicate reset
         self._bounce_time_label()
 
+    def _auto_reset_after_solve(self):
+        """Automatically reset the timer to 0 and generate new scramble after completing a solve."""
+        self.stopwatch.reset()
+        self.time_var.set(self.stopwatch.format_time(0.0))
+
+        # Auto-generate new scramble for next solve
+        self.new_scramble()
+
+    def _auto_generate_scramble(self):
+        """Automatically generate new scramble after completing a solve."""
+        self.new_scramble()
+
     def space_pressed(self, event=None):
         """Handle space key press - enter ready state if timer is not running."""
         if not self.stopwatch.running and not self.ready_state:
+            # Reset timer when entering ready state (only on space hold)
+            self.stopwatch.reset()
+            self.time_var.set(self.stopwatch.format_time(0.0))
+
             self.ready_state = True
             self.ready_start_time = time.time()
             # Visual feedback for ready state
