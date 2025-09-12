@@ -50,6 +50,9 @@ class PSTimerUI(tk.Tk):
         self.pulse_scale = 1.0
         self.bg_animation_id = None
 
+        # Logo cache
+        self.logo_images = {}  # Cache for different logo sizes
+
         self._setup_window()
         self._create_ui()
         self._setup_bindings()
@@ -73,33 +76,64 @@ class PSTimerUI(tk.Tk):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
-    def _set_window_icon(self):
-        """Set the window icon using logo.png if available."""
+    def _get_logo_path(self):
+        """Get the path to the logo.png file."""
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(project_root, "logo.png")
+
+    def _get_icon_path(self):
+        """Get the path to the favicon.ico file."""
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(project_root, "icons", "favicon.ico")
+
+    def _load_logo_image(self, size=None):
+        """Load logo image with optional size scaling."""
+        logo_path = self._get_logo_path()
+
+        if not os.path.exists(logo_path):
+            return None
+
+        # Use cached version if available
+        cache_key = f"logo_{size}" if size else "logo_original"
+        if cache_key in self.logo_images:
+            return self.logo_images[cache_key]
+
         try:
-            # Get the directory containing main.py (project root)
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            logo_path = os.path.join(project_root, "logo.png")
+            logo_img = tk.PhotoImage(file=logo_path)
 
-            if os.path.exists(logo_path):
-                # Try to use the PNG directly (works on some systems)
+            if size:
+                width, height = logo_img.width(), logo_img.height()
+                if height > size:
+                    scale_factor = max(1, height // size)
+                    logo_img = logo_img.subsample(scale_factor, scale_factor)
+
+            # Cache the image
+            self.logo_images[cache_key] = logo_img
+            return logo_img
+        except tk.TclError:
+            return None
+
+    def _set_window_icon(self):
+        """Set the window icon using favicon.ico or logo.png."""
+        try:
+            # First try to use the ICO file from icons folder
+            ico_path = self._get_icon_path()
+            if os.path.exists(ico_path):
                 try:
-                    self.iconphoto(True, tk.PhotoImage(file=logo_path))
+                    self.iconbitmap(ico_path)
+                    return
                 except tk.TclError:
-                    # If PNG doesn't work, try converting to ICO format if Pillow is available
-                    try:
-                        from PIL import Image
+                    pass
 
-                        img = Image.open(logo_path)
-                        # Convert to ICO and save temporarily
-                        ico_path = os.path.join(project_root, "logo.ico")
-                        img.save(ico_path, format="ICO")
-                        self.iconbitmap(ico_path)
-                    except ImportError:
-                        # Pillow not available, use default icon
-                        pass
-                    except Exception:
-                        # Any other error, use default icon
-                        pass
+            # Fallback to PNG
+            logo_path = self._get_logo_path()
+            if os.path.exists(logo_path):
+                try:
+                    icon_img = tk.PhotoImage(file=logo_path)
+                    self.iconphoto(True, icon_img)
+                    return
+                except tk.TclError:
+                    pass
         except Exception:
             # If anything fails, just use the default icon
             pass
@@ -170,36 +204,16 @@ class PSTimerUI(tk.Tk):
         center_frame = tk.Frame(top_bar, bg=theme["secondary_bg"])
         center_frame.pack(side=tk.LEFT, expand=True)
 
-        # Try to load and display logo
-        logo_loaded = False
-        try:
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            logo_path = os.path.join(project_root, "logo.png")
-
-            if os.path.exists(logo_path):
-                try:
-                    # Load logo image (resize to fit top bar)
-                    logo_img = tk.PhotoImage(file=logo_path)
-                    # Scale down if too large (subsample by factor of 2, 3, etc.)
-                    width, height = logo_img.width(), logo_img.height()
-                    if height > 30:  # Scale down to fit in top bar
-                        scale_factor = max(1, height // 30)
-                        logo_img = logo_img.subsample(scale_factor, scale_factor)
-
-                    logo_label = tk.Label(
-                        center_frame,
-                        image=logo_img,
-                        bg=theme["secondary_bg"],
-                    )
-                    logo_label.image = logo_img  # Keep a reference
-                    logo_label.pack(side=tk.LEFT, padx=(0, 5))
-                    logo_loaded = True
-                except tk.TclError:
-                    # PNG format not supported, continue without logo
-                    pass
-        except Exception:
-            # Any error loading logo, continue without it
-            pass
+        # Load and display logo
+        logo_img = self._load_logo_image(size=30)  # 30px height for top bar
+        if logo_img:
+            logo_label = tk.Label(
+                center_frame,
+                image=logo_img,
+                bg=theme["secondary_bg"],
+            )
+            logo_label.image = logo_img  # Keep a reference
+            logo_label.pack(side=tk.LEFT, padx=(0, 5))
 
         title_label = tk.Label(
             center_frame,
@@ -961,7 +975,7 @@ class PSTimerUI(tk.Tk):
         self._update_session_display()
 
     def _create_compact_ui(self):
-        """Create the compact mode UI with minimal elements."""
+        """Create the compact mode UI with minimal elements (no top bar)."""
         theme = self.theme_manager.get_theme()
 
         # Configure window for compact mode
@@ -970,6 +984,31 @@ class PSTimerUI(tk.Tk):
         # Main compact frame
         compact_frame = tk.Frame(self, bg=theme["bg"], padx=10, pady=10)
         compact_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Header with logo and title (replaces top bar)
+        header_frame = tk.Frame(compact_frame, bg=theme["bg"])
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Load and display small logo
+        logo_img = self._load_logo_image(size=20)  # 20px height for compact mode
+        if logo_img:
+            logo_label = tk.Label(
+                header_frame,
+                image=logo_img,
+                bg=theme["bg"],
+            )
+            logo_label.image = logo_img  # Keep a reference
+            logo_label.pack(side=tk.LEFT, padx=(0, 5))
+
+        # App title (smaller for compact mode)
+        title_label = tk.Label(
+            header_frame,
+            text="PSTimer",
+            font=(theme["font_family"], 12, "bold"),
+            bg=theme["bg"],
+            fg=theme["text_primary"],
+        )
+        title_label.pack(side=tk.LEFT)
 
         # Timer display (large and prominent)
         self.compact_widgets["timer"] = tk.Label(
@@ -997,7 +1036,44 @@ class PSTimerUI(tk.Tk):
         controls_frame = tk.Frame(compact_frame, bg=theme["bg"])
         controls_frame.pack()
 
-        # Exit compact mode button
+        # Exit compact mode button (with logo icon if available)
+        exit_btn = tk.Button(
+            controls_frame,
+            text="↗",  # Expand icon
+            command=self._exit_compact_mode,
+            font=(theme["font_family"], 12, "bold"),
+            width=3,
+            bg=theme["accent"],
+            fg="white",
+        )
+        exit_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # New scramble button
+        scramble_btn = tk.Button(
+            controls_frame,
+            text="S",
+            command=self._generate_new_scramble,
+            font=(theme["font_family"], 10, "bold"),
+            width=3,
+            bg=theme["button_bg"],
+            fg=theme["text_primary"],
+        )
+        scramble_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Reset button
+        reset_btn = tk.Button(
+            controls_frame,
+            text="R",
+            command=self._reset_timer,
+            font=(theme["font_family"], 10, "bold"),
+            width=3,
+            bg=theme["button_bg"],
+            fg=theme["text_primary"],
+        )
+        reset_btn.pack(side=tk.LEFT)
+
+        # Update compact display with current data
+        self._update_compact_display()
         exit_btn = tk.Button(
             controls_frame,
             text="↗",  # Expand icon
