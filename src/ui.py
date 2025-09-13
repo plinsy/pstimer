@@ -528,14 +528,14 @@ class PSTimerUI(tk.Tk):
         cube_frame = tk.Frame(right_panel, bg=theme["sidebar_bg"])
         cube_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Add the 3D cube
-        self.cube_viz = CubeVisualization(cube_frame, width=220, height=220)
+        # Add the cube visualization (now shows all 6 faces unfolded)
+        self.cube_viz = CubeVisualization(cube_frame, width=260, height=200)
         self.cube_viz.get_canvas().pack(expand=True, fill=tk.BOTH)
 
-        # Scramble function note
+        # Scramble visualization note
         function_label = tk.Label(
             right_panel,
-            text="Function draw scramble",
+            text="Cube state after scramble",
             font=(theme["font_family"], 10),
             bg=theme["sidebar_bg"],
             fg=theme["text_secondary"],

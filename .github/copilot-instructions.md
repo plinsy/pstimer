@@ -5,104 +5,150 @@ A modular, csTimer-inspired Rubik's cube timer with WCA-compliant scrambles, adv
 
 ## Architecture Components
 
-### Core Module Structure
-- **`main.py`**: Entry point that imports `src.ui.PSTimerUI` and runs the application
-- **`src/ui.py`**: Main UI class (1200+ lines) with csTimer-inspired 3-panel layout
+### Entry Point & Module Structure
+- **`main.py`**: Simple entry point that adds `src/` to path and runs `PSTimerUI().mainloop()`
+- **`src/ui.py`**: Main UI class (1379 lines) orchestrating all components
 - **`src/timer.py`**: High-precision `Stopwatch` class using `time.perf_counter()`
-- **`src/scramble.py`**: Extensible scramble system with WCA-compliant generators
-- **`src/statistics.py`**: Session management and speedcubing statistics (mo3, ao5, ao12, ao100)
-- **`src/themes.py`**: Theme system with csTimer, Dark, and Blue themes
-- **`src/cube_visualization.py`**: 3D interactive cube using OpenGL-style rendering
+- **`src/scramble.py`**: WCA-compliant scramble generators (461 lines) with strict move validation
+- **`src/statistics.py`**: Session management and speedcubing statistics with WCA trimming rules
+- **`src/themes.py`**: Theme system with predefined color schemes (csTimer, Dark, Blue)
+- **`src/cube_visualization.py`**: 3D interactive cube simulation with OpenGL-style rendering
 - **`src/settings.py`**: Settings dialog for configuration management
 
 ### UI Architecture Pattern
-The main `PSTimerUI` class creates a 3-panel csTimer-inspired layout:
+The `PSTimerUI` class implements a dual-mode system with csTimer-inspired 3-panel layout:
 ```python
-# In _create_ui():
+# Normal mode: _create_ui() creates 3 panels
 self._create_left_panel(main_frame)    # Statistics & solve history
 self._create_center_panel(main_frame)  # Timer & scramble display  
 self._create_right_panel(main_frame)   # 3D cube visualization
+
+# Compact mode: _create_compact_ui() creates minimal overlay
+self.is_compact_mode = True/False      # State toggle
+self.compact_position = "top-right"    # Corner positioning
 ```
 
-### Key Classes & Responsibilities
+### Core Classes & Data Flow
 
-#### `PSTimerUI` (src/ui.py)
-- Main application window inheriting from `tk.Tk`
-- Manages dual-mode UI: normal (3-panel) and compact (overlay) modes
-- Handles keyboard events: Space (timer), S (scramble), Ctrl+M (compact mode)
-- Animation system using `tk.after()` for timer pulse effects
+#### `PSTimerUI` State Management
+- **Timer states**: `self.is_ready`, `self.ready_start_time` for space bar hold validation
+- **UI modes**: `self.is_compact_mode` with geometry caching in `self.normal_geometry`
+- **Animations**: `self.pulse_scale` (1.0-1.12) and `self.bg_animation_id` for visual feedback
+- **Settings**: `self.user_settings` dict persisted across sessions
 
-#### `ScrambleManager` (src/scramble.py)
-- Supports 8 WCA puzzle types with compliant algorithms
-- Pattern: Each puzzle class extends `ScrambleGenerator` base class
-- Example: `ThreeByThreeScramble` avoids consecutive same-face/opposite-face moves
-- Uses `FACES`, `MODIFIERS`, `OPPOSITE_FACES` constants for move restrictions
+#### WCA-Compliant Scramble System
+- **Base pattern**: All generators extend `ScrambleGenerator` with `generate()` method
+- **3x3 rules**: 20 moves, no consecutive same face, max 2 consecutive opposite faces
+- **Move validation**: Uses `OPPOSITE_FACES` dict and face history tracking
+- **Example**: `ThreeByThreeScramble` checks `last_face` and `second_last_face`
 
-#### `SessionManager` & `StatisticsCalculator` (src/statistics.py) 
-- Session data structure: `SolveTime` objects with metadata
-- Statistics follow WCA trimming rules (remove best/worst for averages)
-- Real-time calculation: ao5 (trim 1 best/worst), ao12 (trim 1), ao100 (trim 5)
-
+#### Statistics with WCA Trimming
+- **Data structure**: `SolveTime(time, scramble, timestamp, penalty)` objects
+- **Calculations**: ao5 (remove 1 best/worst), ao12 (remove 1), ao100 (remove 5 each)
+- **Real-time updates**: `_update_statistics_display()` called after each solve
 ### Unique Features Implementation
 
-#### Compact Mode (`is_compact_mode` state)
-- Minimal 280x150px overlay with 4 corner positioning options
-- Dual UI system: `_create_ui()` vs `_create_compact_ui()` methods
-- Always-on-top window with essential timer/scramble display
+#### Compact Mode System
+- **State toggle**: `self.is_compact_mode` with `Ctrl+M` keyboard shortcut
+- **Positioning**: `self.compact_position` supports 4 corners (`Ctrl+1-4`)
+- **Geometry caching**: `self.normal_geometry` preserves main window state
+- **Dual UI creation**: Completely separate `_create_compact_ui()` method
 
-#### Transparency System
-- `self.transparency` attribute (0.0-1.0) with Ctrl+/- keyboard controls
-- Uses `self.attributes('-alpha', self.transparency)` for window transparency
+#### Transparency System  
+- **Control**: `self.transparency` (0.0-1.0) with `Ctrl+/-` and `Ctrl+0` shortcuts
+- **Implementation**: `self.attributes('-alpha', self.transparency)` for window alpha
+- **Theme integration**: All UI creation references `theme = self.theme_manager.get_theme()`
 
-#### Theme Integration
-- All UI creation methods reference `theme = self.theme_manager.get_theme()`
-- Consistent color application across panels using theme dictionary keys
-- Theme switching triggers full UI recreation via `_apply_theme()`
+#### Animation Framework
+- **Timer pulse**: `self.pulse_scale` animated between 1.0-1.12 using `tk.after()`
+- **Background effects**: `self.bg_animation_id` for color cycling during timer runs
+- **State-based cleanup**: Animations cancelled on timer state changes
 
 ## Development Patterns
 
-### Testing Structure
-- Feature-specific test files: `test_wca_compliance.py`, `test_compact_mode.py`, `test_transparency.py`
-- Tests import from `src/` modules and verify component functionality
-- WCA compliance tests validate scramble algorithm correctness
+### WCA Compliance Testing
+- **Structure**: Feature-specific test files like `test_wca_compliance.py`, `test_compact_mode.py`
+- **Pattern**: Import from `src/` modules and verify scramble algorithm correctness
+- **Example**: 3x3 tests verify 20-move length, no consecutive same-face moves
+```python
+# Validation pattern used throughout tests:
+moves = scramble.split()
+assert len(moves) == 20, f"Expected 20 moves, got {len(moves)}"
+for j in range(len(moves) - 1):
+    current_face = moves[j][0]
+    next_face = moves[j + 1][0]
+    assert current_face != next_face, f"Consecutive same face moves"
+```
 
 ### Event Handling Pattern
 ```python
-# Keyboard bindings in __init__():
+# Keyboard bindings in PSTimerUI.__init__():
 self.bind('<KeyPress>', self._on_key_press)
 self.bind('<KeyRelease>', self._on_key_release)
 
-# Timer state management:
-self.is_ready = False  # Space bar hold state
-self.ready_start_time = None  # For hold time validation
+# Timer state management pattern:
+self.is_ready = False          # Space bar hold state
+self.ready_start_time = None   # For 300ms hold validation
+self.hold_time = 300          # Configurable hold threshold
 ```
 
-### Animation System
-- Timer pulse: `self.pulse_scale` animated between 1.0-1.12 during start/stop
-- Background animation: `self.bg_animation_id` for color cycling during timer runs
-- All animations use `self.after()` with cleanup on state changes
+### Theme System Architecture
+- **Theme definitions**: Complete color dictionaries in `THEMES` dict in `themes.py`
+- **Required keys**: `bg`, `text_primary`, `timer_color`, `timer_ready`, `timer_running`, etc.
+- **Application pattern**: `theme = self.theme_manager.get_theme()` in all UI methods
+- **Dynamic switching**: `_apply_theme()` triggers full UI recreation
 
 ## Development Workflow
 
-### Running the Application
+### Running & Building
 ```bash
-python main.py  # Direct execution, no build process needed
+# Development - direct execution
+python main.py
+
+# Distribution build (uses PyInstaller)
+python build_dist.py          # Cross-platform build script
+# Or platform-specific:
+build_windows.bat             # Windows batch file
+build_unix.sh                 # Unix shell script
 ```
 
-### Adding New Puzzle Types
-1. Create new generator class in `src/scramble.py` extending `ScrambleGenerator`
-2. Add to `PUZZLE_TYPES` dict in `ScrambleManager.__init__()`
-3. Update dropdown options in `_create_top_bar()` method
+### Build System Details
+- **PyInstaller spec**: `PSTimer.spec` with `console=False` for GUI app
+- **Icon handling**: Uses `icons/favicon.ico` for Windows builds
+- **Distribution**: Creates `PSTimer-Distribution/` with executable and assets
+- **Requirements check**: `build_dist.py` validates PyInstaller availability
 
-### Adding New Themes
-1. Add theme dict to `THEMES` in `src/themes.py`
-2. Include all required color keys (bg, text_primary, timer_color, etc.)
-3. Theme automatically available via theme switching system
+### Testing Strategy
+- **Functionality tests**: `test_basic_functionality.py` verifies core cube/scramble operations
+- **Compliance validation**: WCA tests ensure tournament-legal scrambles
+- **Feature testing**: Specific tests for compact mode, transparency, themes
+- **No test framework**: Uses simple assertions and print statements
+
+### Adding New Features
+
+#### New Puzzle Types
+1. Create generator class in `src/scramble.py` extending `ScrambleGenerator`
+2. Add WCA-compliant move validation (see `ThreeByThreeScramble` pattern)
+3. Add to `PUZZLE_TYPES` dict in `ScrambleManager.__init__()`
+4. Update dropdown in `PSTimerUI._create_top_bar()`
+
+#### New Themes
+1. Add complete color dict to `THEMES` in `src/themes.py`
+2. Include all required keys: `bg`, `text_primary`, `timer_color`, etc.
+3. Theme automatically available via existing switching system
 
 ### Key Integration Points
-- **Settings persistence**: User preferences stored in `self.user_settings` dict
-- **Session data**: Solve times stored as `[(SolveTime, timestamp), ...]` lists
-- **Statistics updates**: Triggered after each solve via `_update_statistics_display()`
-- **3D cube state**: Scramble sequences drive cube visualization updates
+- **Settings persistence**: `self.user_settings` dict (no external config files)
+- **Session data**: Solve times as `[(SolveTime, timestamp), ...]` lists in memory
+- **Statistics updates**: Automatic recalculation via `_update_statistics_display()`
+- **Cube visualization**: Scramble sequences drive 3D state updates
+- **Logo/icon loading**: `_load_logo_image()` with size caching in `self.logo_images`
 
-When extending PSTimer, follow the modular src/ structure, maintain WCA compliance for scrambles, and preserve the csTimer-inspired UX patterns.
+### Critical Patterns to Preserve
+- **csTimer-inspired UX**: 3-panel layout with consistent keyboard controls
+- **WCA compliance**: Strict move validation in all scramble generators  
+- **Modular architecture**: Clear separation between UI, timer, scramble, statistics
+- **Animation framework**: `tk.after()` based system with proper cleanup
+- **Dual-mode UI**: Seamless switching between normal and compact modes
+
+When extending PSTimer, maintain the established patterns for WCA compliance, follow the modular src/ structure, and preserve the csTimer-inspired user experience.
