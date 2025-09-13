@@ -66,18 +66,29 @@ self.compact_position = "top-right"    # Corner positioning
 
 ## Development Patterns
 
-### WCA Compliance Testing
-- **Structure**: Feature-specific test files like `test_wca_compliance.py`, `test_compact_mode.py`
-- **Pattern**: Import from `src/` modules and verify scramble algorithm correctness
-- **Example**: 3x3 tests verify 20-move length, no consecutive same-face moves
+### Modern Testing Structure with pytest
+- **Framework**: Complete migration from simple assertions to pytest-based testing
+- **Organization**: `tests/` directory with 48 comprehensive tests across 4 test files
+- **Coverage**: WCA compliance (`test_wca_compliance.py`), statistics (`test_statistics.py`), timer precision (`test_timer.py`), and themes (`test_themes.py`)
+- **Fixtures**: Centralized test setup in `tests/conftest.py` with reusable components
+- **Configuration**: `pytest.ini` for test discovery and execution settings
+- **Test runner**: `run_tests.py` script with coverage, filtering, and different execution modes
+
+### Testing Patterns Used Throughout
 ```python
-# Validation pattern used throughout tests:
-moves = scramble.split()
+# Parameterized tests for multiple puzzle types
+@pytest.mark.parametrize("puzzle_type,expected_faces", [
+    ("3x3x3", ["U", "D", "L", "R", "F", "B"]),
+    ("2x2x2", ["U", "R", "F"]),
+])
+
+# Fixture-based setup for consistent test environments
+@pytest.fixture
+def scramble_manager():
+    return ScrambleManager("3x3x3")
+
+# Comprehensive validation with detailed error messages
 assert len(moves) == 20, f"Expected 20 moves, got {len(moves)}"
-for j in range(len(moves) - 1):
-    current_face = moves[j][0]
-    next_face = moves[j + 1][0]
-    assert current_face != next_face, f"Consecutive same face moves"
 ```
 
 ### Event Handling Pattern
@@ -100,16 +111,22 @@ self.hold_time = 300          # Configurable hold threshold
 
 ## Development Workflow
 
-### Running & Building
+### Running & Testing
 ```bash
 # Development - direct execution
 python main.py
 
+# Modern testing with pytest
+pytest tests/ -v                    # Run all tests
+pytest tests/test_wca_compliance.py # Run specific test file
+pytest --cov=src --cov-report=html  # Run with coverage
+
+# Test runner with options
+python run_tests.py --type=wca      # Run WCA compliance tests only
+python run_tests.py --coverage      # Include coverage reporting
+
 # Distribution build (uses PyInstaller)
-python build_dist.py          # Cross-platform build script
-# Or platform-specific:
-build_windows.bat             # Windows batch file
-build_unix.sh                 # Unix shell script
+python build_dist.py               # Cross-platform build script
 ```
 
 ### Build System Details

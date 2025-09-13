@@ -91,7 +91,7 @@ class TestSolveTime:
         """Test SolveTime object creation."""
         now = datetime.now()
         solve = SolveTime(12.34, "R U R' U'", now, "+2")
-        
+
         assert solve.time == 12.34
         assert solve.scramble == "R U R' U'"
         assert solve.timestamp == now
@@ -100,25 +100,25 @@ class TestSolveTime:
     def test_solve_time_defaults(self):
         """Test SolveTime default values."""
         solve = SolveTime(15.67)
-        
+
         assert solve.time == 15.67
         assert solve.scramble == ""
         assert solve.penalty is None
         assert isinstance(solve.timestamp, datetime)
 
     def test_effective_time_property(self):
-        """Test effective_time property with penalties."""
+        """Test display_time property with penalties."""
         # Normal solve
         solve1 = SolveTime(12.34)
-        assert solve1.effective_time == 12.34
-        
+        assert solve1.display_time == 12.34
+
         # +2 penalty
         solve2 = SolveTime(12.34, penalty="+2")
-        assert solve2.effective_time == 14.34
-        
+        assert solve2.display_time == 14.34
+
         # DNF penalty
         solve3 = SolveTime(12.34, penalty="DNF")
-        assert solve3.effective_time == float('inf')
+        assert solve3.display_time == float("inf")
 
 
 class TestSessionManager:
@@ -128,28 +128,28 @@ class TestSessionManager:
         """Test creating a new session."""
         sm = SessionManager()
         assert len(sm.current_session) == 0
-        assert sm.session_name == "Session 1"
+        assert sm.current_session.name == "Session 1"
 
     def test_add_solve_time(self):
         """Test adding solve times to session."""
         sm = SessionManager()
         solve = SolveTime(12.34, "R U R' U'")
-        
-        sm.add_solve_time(solve)
+
+        sm.current_session.add_time(solve)
         assert len(sm.current_session) == 1
-        assert sm.current_session[0] == solve
+        assert sm.current_session.times[0] == solve
 
     def test_get_recent_times(self):
         """Test getting recent solve times."""
         sm = SessionManager()
-        
+
         # Add some solve times
         for i in range(10):
             solve = SolveTime(10 + i, f"scramble_{i}")
-            sm.add_solve_time(solve)
-        
-        # Test getting recent times
-        recent_5 = sm.get_recent_times(5)
+            sm.current_session.add_time(solve)
+
+        # Test getting recent times (times are stored newest first)
+        recent_5 = sm.current_session.times[:5]
         assert len(recent_5) == 5
         assert recent_5[0].time == 19  # Most recent (last added)
         assert recent_5[4].time == 15  # 5th most recent
@@ -157,33 +157,34 @@ class TestSessionManager:
     def test_clear_session(self):
         """Test clearing current session."""
         sm = SessionManager()
-        
+
         # Add some solve times
         for i in range(5):
-            sm.add_solve_time(SolveTime(10 + i))
-        
+            sm.current_session.add_time(SolveTime(10 + i))
+
         assert len(sm.current_session) == 5
-        
-        sm.clear_session()
+
+        sm.current_session.clear()
         assert len(sm.current_session) == 0
 
     def test_remove_last_solve(self):
-        """Test removing the last solve time."""
+        """Test removing solve times."""
         sm = SessionManager()
-        
+
         # Add some solve times
         solve1 = SolveTime(12.34)
         solve2 = SolveTime(15.67)
-        sm.add_solve_time(solve1)
-        sm.add_solve_time(solve2)
-        
+        sm.current_session.add_time(solve1)
+        sm.current_session.add_time(solve2)
+
         assert len(sm.current_session) == 2
-        
-        removed = sm.remove_last_solve()
+
+        # Remove most recent (index 0)
+        removed = sm.current_session.remove_time(0)
         assert removed == solve2
         assert len(sm.current_session) == 1
-        assert sm.current_session[0] == solve1
-        
+        assert sm.current_session.times[0] == solve1
+
         # Test removing from empty session
-        sm.clear_session()
-        assert sm.remove_last_solve() is None
+        sm.current_session.clear()
+        assert sm.current_session.remove_time(0) is None
